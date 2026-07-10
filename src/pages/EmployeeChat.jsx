@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Logo, Stamp, Button, Icon, StampMark } from '../components/ui'
-import { load, answerFor, topicById, logActivity } from '../lib/store'
+import { topicById } from '../lib/store'
+import { api } from '../lib/api'
 
 const SUGGESTIONS = [
   'How much can I spend on materials?',
@@ -13,8 +14,8 @@ const SUGGESTIONS = [
 
 export default function EmployeeChat() {
   const nav = useNavigate()
-  const [state] = useState(() => load())
   const [emp, setEmp] = useState(null)
+  const [companyName, setCompanyName] = useState('')
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
@@ -22,10 +23,10 @@ export default function EmployeeChat() {
 
   useEffect(() => {
     const sess = JSON.parse(sessionStorage.getItem('clerx.session') || 'null')
-    const found = sess && (state.employees || []).find((e) => e.id === sess.empId)
-    if (!found) { nav('/join'); return }
-    setEmp(found)
-    setMessages([{ role: 'ai', text: `Hello ${found.name.split(' ')[0]} — I'm the clerk for ${state.company?.name || 'your company'}. Ask me anything about the topics you're cleared for.` }])
+    if (!sess?.employee) { nav('/join'); return }
+    setEmp(sess.employee)
+    setCompanyName(sess.company?.name || 'your company')
+    setMessages([{ role: 'ai', text: `Hello ${sess.employee.name.split(' ')[0]} — I'm the clerk for ${sess.company?.name || 'your company'} — ask me anything about the topics you're cleared for.` }])
   }, [])
 
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }) }, [messages, typing])
@@ -33,15 +34,16 @@ export default function EmployeeChat() {
   if (!emp) return null
   const allowed = emp.topics
 
-  const send = (text) => {
+  const send = async (text) => {
     const q = (text ?? input).trim()
-    if (!q) return
+    if (!q || typing) return
     setMessages((m) => [...m, { role: 'user', text: q }]); setInput(''); setTyping(true)
-    setTimeout(() => {
-      const res = answerFor(q, allowed); setTyping(false)
+    try {
+      const res = await api.ask(emp.code, q)
       setMessages((m) => [...m, { role: 'ai', text: res.text, blocked: res.blocked, topic: res.topic }])
-      if (res.topic) logActivity({ empId: emp.id, empName: emp.name, question: q, topic: res.topic, blocked: res.blocked })
-    }, 900 + Math.random() * 700)
+    } catch (e) {
+      setMessages((m) => [...m, { role: 'ai', text: 'Sorry — I lost the connection to your company records. Try again in a moment.', blocked: false }])
+    } finally { setTyping(false) }
   }
 
   return (

@@ -3,7 +3,9 @@ import { useOutletContext, useNavigate } from 'react-router-dom'
 import { PageHead } from '../../components/AppShell'
 import { Button, Stamp, Card, Field, Input, Icon } from '../../components/ui'
 import { useToast, Modal, Bar } from '../../components/kit'
-import { load, save, reset, dateLabel } from '../../lib/store'
+import { dateLabel } from '../../lib/store'
+import { api } from '../../lib/api'
+import { useAuth } from '../../lib/auth'
 
 const PLANS = [
   { name: 'Ledger', price: 99, seats: 15 },
@@ -12,9 +14,10 @@ const PLANS = [
 ]
 
 export default function Settings() {
-  const { state } = useOutletContext()
+  const { state, reload } = useOutletContext()
   const nav = useNavigate()
   const toast = useToast()
+  const { logout, refresh } = useAuth()
   const c = state.company
   const [name, setName] = useState(c.name)
   const [domain, setDomain] = useState(c.domain || '')
@@ -23,8 +26,18 @@ export default function Settings() {
   const plan = PLANS.find((p) => p.name === c.plan) || PLANS[1]
   const seatsUsed = state.employees.length
 
-  const saveProfile = () => { const s = load(); s.company.name = name.trim() || s.company.name; s.company.domain = domain.trim(); save(s); toast('Company profile saved') }
-  const switchPlan = (p) => { const s = load(); s.company.plan = p.name; save(s); toast(`Switched to ${p.name}`) }
+  const saveProfile = async () => {
+    try { await api.updateCompany({ name: name.trim() || c.name, domain: domain.trim() }); await reload(); await refresh(); toast('Company profile saved') }
+    catch (e) { toast(e.message, { tone: 'stamp' }) }
+  }
+  const switchPlan = async (p) => {
+    try { await api.updateCompany({ plan: p.name }); await reload(); await refresh(); toast(`Switched to ${p.name}`) }
+    catch (e) { toast(e.message, { tone: 'stamp' }) }
+  }
+  const doReset = async () => {
+    try { await api.resetWorkspace(); await logout(); nav('/') }
+    catch (e) { toast(e.message, { tone: 'stamp' }) }
+  }
 
   return (
     <div>
@@ -91,7 +104,7 @@ export default function Settings() {
 
       <Modal open={confirmReset} onClose={() => setConfirmReset(false)} title="Reset workspace?"
         footer={<><Button variant="ghost" size="sm" onClick={() => setConfirmReset(false)}>Cancel</Button>
-          <Button variant="primary" size="sm" onClick={() => { reset(); nav('/') }}>Yes, wipe everything</Button></>}>
+          <Button variant="primary" size="sm" onClick={doReset}>Yes, wipe everything</Button></>}>
         <p className="text-[14px] text-ink-soft">All employees, sources, clearances, and the activity log will be permanently deleted. You'll return to the homepage.</p>
       </Modal>
     </div>

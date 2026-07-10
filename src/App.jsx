@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Landing from './pages/Landing'
+import Auth from './pages/Auth'
 import Onboarding from './pages/Onboarding'
 import EmployeeJoin from './pages/EmployeeJoin'
 import EmployeeChat from './pages/EmployeeChat'
@@ -16,6 +17,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
+      <Route path="/login" element={<Auth mode="login" />} />
+      <Route path="/signup" element={<Auth mode="signup" />} />
       <Route path="/setup" element={<Onboarding />} />
       <Route path="/join" element={<EmployeeJoin />} />
       <Route path="/chat" element={<EmployeeChat />} />

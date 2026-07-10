@@ -3,12 +3,13 @@ import { useOutletContext } from 'react-router-dom'
 import { PageHead } from '../../components/AppShell'
 import { Button, Stamp, Card, Field, Input, Icon } from '../../components/ui'
 import { Avatar, Drawer, Modal, Menu, MenuItem, EmptyState, useToast } from '../../components/kit'
-import { load, save, genCode, TOPICS, topicById, timeAgo } from '../../lib/store'
+import { TOPICS, topicById, timeAgo } from '../../lib/store'
+import { api } from '../../lib/api'
 
 const TEAMS = ['All', 'Field', 'Sales', 'Admin']
 
 export default function Staff() {
-  const { state } = useOutletContext()
+  const { state, reload } = useOutletContext()
   const toast = useToast()
   const [q, setQ] = useState('')
   const [team, setTeam] = useState('All')
@@ -18,18 +19,23 @@ export default function Staff() {
   const employees = state.employees
   const filtered = useMemo(() => employees.filter((e) =>
     (team === 'All' || e.team === team) &&
-    (e.name.toLowerCase().includes(q.toLowerCase()) || e.role.toLowerCase().includes(q.toLowerCase()))
+    (e.name.toLowerCase().includes(q.toLowerCase()) || (e.role || '').toLowerCase().includes(q.toLowerCase()))
   ), [employees, q, team])
 
   const current = employees.find((e) => e.id === openId)
 
-  const mutate = (fn) => { const s = load(); fn(s); save(s) }
-  const toggleTopic = (id, tid) => mutate((s) => {
-    const e = s.employees.find((x) => x.id === id)
-    e.topics = e.topics.includes(tid) ? e.topics.filter((t) => t !== tid) : [...e.topics, tid]
-  })
-  const remove = (id) => { mutate((s) => { s.employees = s.employees.filter((e) => e.id !== id) }); setOpenId(null); toast('Removed from staff', { tone: 'stamp', icon: <Icon.x size={15} /> }) }
-  const addEmployee = (data) => { mutate((s) => { s.employees.push({ id: crypto.randomUUID(), code: genCode(), topics: [], status: 'invited', joinedAt: Date.now(), lastActive: null, questions: 0, ...data }) }); setAdding(false); toast('Invite created') }
+  const toggleTopic = async (emp, tid) => {
+    const topics = emp.topics.includes(tid) ? emp.topics.filter((t) => t !== tid) : [...emp.topics, tid]
+    try { await api.updateEmployee(emp.id, { topics }); await reload() } catch (e) { toast(e.message, { tone: 'stamp' }) }
+  }
+  const remove = async (id) => {
+    try { await api.removeEmployee(id); setOpenId(null); await reload(); toast('Removed from staff', { tone: 'stamp', icon: <Icon.x size={15} /> }) }
+    catch (e) { toast(e.message, { tone: 'stamp' }) }
+  }
+  const addEmployee = async (data) => {
+    try { await api.addEmployee(data); setAdding(false); await reload(); toast('Invite created') }
+    catch (e) { toast(e.message, { tone: 'stamp' }) }
+  }
 
   return (
     <div>
@@ -120,7 +126,7 @@ export default function Staff() {
                   {TOPICS.map((t) => {
                     const on = current.topics.includes(t.id)
                     return (
-                      <button key={t.id} onClick={() => toggleTopic(current.id, t.id)}
+                      <button key={t.id} onClick={() => toggleTopic(current, t.id)}
                         className={`flex w-full items-center justify-between rounded-lg border-[1.5px] px-3 py-2.5 text-left transition ${on ? 'border-ink bg-paper-2' : 'border-ink/25 hover:border-ink'}`}>
                         <span className="flex items-center gap-2.5 text-[13px] font-medium">
                           <span className="h-2.5 w-2.5 rounded-full border border-ink" style={{ background: on ? t.color : 'transparent' }} /> {t.label}

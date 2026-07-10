@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { Logo, Button, Stamp, Icon } from './ui'
 import { Menu, MenuItem, MenuLabel, MenuSep, Avatar } from './kit'
-import { reset } from '../lib/store'
 
 const NAV = [
   { to: '/app', label: 'Overview', icon: Icon.ledger, end: true },
@@ -13,9 +12,10 @@ const NAV = [
   { to: '/app/settings', label: 'Settings', icon: Icon.key },
 ]
 
-export default function AppShell({ company, children }) {
+export default function AppShell({ company, user, onSignOut, children }) {
   const nav = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const displayName = user?.name || 'Team Lead'
 
   const SidebarInner = (
     <>
@@ -85,14 +85,14 @@ export default function AppShell({ company, children }) {
                 <Icon.stamp size={16} />
                 <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border border-ink bg-stamp" />
               </button>
-              <Menu trigger={<span className="block rounded-lg hover:opacity-80"><Avatar name="You Leader" size={34} /></span>}>
+              <Menu trigger={<span className="block rounded-lg hover:opacity-80"><Avatar name={displayName} size={34} /></span>}>
                 <MenuLabel>Signed in as</MenuLabel>
-                <div className="px-2.5 pb-1.5 text-[13px] font-semibold">You (Team Lead)</div>
+                <div className="px-2.5 pb-1.5 text-[13px] font-semibold leading-tight">{displayName}</div>
                 <MenuSep />
                 <MenuItem icon={Icon.building} onClick={() => nav('/app/settings')}>Company settings</MenuItem>
                 <MenuItem icon={Icon.arrowUR} onClick={() => nav('/join')}>Employee view</MenuItem>
                 <MenuSep />
-                <MenuItem icon={Icon.logout} tone="stamp" onClick={() => { reset(); nav('/') }}>Reset demo</MenuItem>
+                <MenuItem icon={Icon.logout} tone="stamp" onClick={onSignOut}>Sign out</MenuItem>
               </Menu>
             </div>
           </header>

@@ -8,24 +8,36 @@ Built for teams of **5–200 employees**: too big to "just ask your manager," to
 
 1. **Verify** — Leader enters their company name; Clerx runs a web check to confirm it's a real, legitimate business and pulls in public context.
 2. **Connect** — Link Drive / Slack / Notion or upload files. Clerx auto-sorts everything into topics (Finance, HR, Materials, IT, Sales, Ops).
-3. **Permission** — Add employees by name and tag each one to the topics they're allowed to ask about.
+3. **Permission** — Add employees by name and stamp each one with the topics they're allowed to ask about.
 4. **Distribute** — Each employee gets a join code. They enter it with their name and start asking — scoped to exactly what they're cleared for.
 
-## This repo (UI-first prototype)
+## Architecture
 
-This is the **frontend prototype**. Everything backend-ish is mocked in the browser:
+Full-stack, self-contained — no external services required to run.
 
-- Company verification is simulated (no real web search yet).
-- Integrations are simulated (no real OAuth yet).
-- The AI answers from a small mock knowledge base in `src/lib/store.js`, and **respects per-employee topic permissions** — ask about something you're not cleared for and Clerx blocks it.
-- State persists in `localStorage`, so you can walk the full leader → employee flow.
+**Frontend** — Vite + React + React Router, Tailwind CSS v4. A "records office" visual identity (warm paper, ink, rubber-stamp vermillion, Fraunces serif).
 
-Real backend (LLM + web search + live integrations) comes next.
+**Backend** — Node/Express API with **SQLite** (via Node's built-in `node:sqlite`, no native build) and cookie sessions.
+- Real accounts: signup / login / logout with **bcrypt**-hashed passwords and httpOnly session cookies.
+- All workspace data (company, employees, sources, activity) persists in SQLite, scoped per account.
+- The **permission engine lives on the server**: employees ask via a code-gated endpoint and answers are gated by their cleared topics — the client can't bypass it.
+- Every employee question is written to an **activity/audit log**.
 
-## Tech
+### API surface
 
-- Vite + React + React Router
-- Tailwind CSS v4
+```
+POST /api/auth/signup | login | logout | demo      GET /api/auth/me
+GET  /api/company      PATCH /api/company           POST /api/company/verify | seed | reset
+GET/POST/PATCH/DELETE  /api/employees[/:id]
+GET/POST /api/sources   POST /api/sources/:kind/resync
+GET  /api/topics        POST /api/join   POST /api/ask     (public, code-gated)
+```
+
+## What's real vs. mocked
+
+- **Real:** accounts, sessions, password hashing, a SQLite database, per-company data isolation, and server-enforced topic permissions.
+- **Mocked (for now):** company verification (simulated web check), the Drive/Slack/Notion integrations (simulated connect + indexing), and the answer engine (a small keyword knowledge base in `server/engine.js`).
+- **Next:** swap the mock engine for real retrieval + an LLM; real OAuth integrations; a real search API for verification.
 
 ## Run locally
 
@@ -34,21 +46,34 @@ npm install
 npm run dev
 ```
 
-Then open the printed URL.
+`npm run dev` starts both the Vite dev server (`:5175`) and the API (`:3001`) via `concurrently`; Vite proxies `/api` → the backend. Open the printed URL.
 
-### Try it
+- **Try it instantly:** click **Explore a live demo** on the landing page — it creates a guest account with a fully populated sample company (Meridian Build Co.).
+- Or **Open a file** to sign up and set your own company up from scratch.
+- Employees: **Employee entry** → enter a join code.
 
-- `/` — landing page
-- `/setup` — leader onboarding (verify → connect → team → codes)
-- `/dashboard` — leader admin (adjust permissions live)
-- `/join` — employee code entry (use a code generated in setup)
-- `/chat` — scoped employee assistant
+### Production build
 
-## Routes / structure
+```bash
+npm run build   # builds the frontend to dist/
+npm start       # Express serves dist/ + the API on one port (API_PORT, default 3001)
+```
+
+## Structure
 
 ```
+server/
+  server.js        Express app + route mounting; serves dist/ in production
+  db.js            SQLite schema + row→API mappers
+  auth.js          password hashing, sessions, requireAuth
+  engine.js        topics + mock knowledge/answer engine (LLM goes here later)
+  seed.js          sample company generator
+  routes/          auth, company, employees, sources, public (join/ask/topics)
 src/
-  pages/       Landing, Onboarding, Dashboard, EmployeeJoin, EmployeeChat
-  components/   ui.jsx (Logo, Button, Field, Input, Badge)
-  lib/          store.js (demo state + mock permissioned AI), icons.jsx
+  lib/             api.js (fetch client), auth.jsx (AuthProvider), store.js (UI helpers)
+  pages/           Landing, Auth, Onboarding, EmployeeJoin, EmployeeChat, NotFound
+  pages/app/       AppLayout + Overview, Staff, Knowledge, Topics, Activity, Settings
+  components/      ui.jsx, kit.jsx (toasts/modal/drawer/…), AppShell.jsx
 ```
+
+Data lives in `.data/clerx.db` (gitignored). Delete it to start fresh.

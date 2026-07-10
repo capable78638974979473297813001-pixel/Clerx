@@ -3,7 +3,8 @@ import { useOutletContext } from 'react-router-dom'
 import { PageHead } from '../../components/AppShell'
 import { Button, Stamp, Card, Icon } from '../../components/ui'
 import { useToast, Bar } from '../../components/kit'
-import { load, save, TOPICS, timeAgo } from '../../lib/store'
+import { TOPICS, timeAgo } from '../../lib/store'
+import { api } from '../../lib/api'
 
 const SOURCE_META = {
   drive: { icon: Icon.drive, files: ['Employee Handbook 2026.gdoc', 'Q3 Budget.gsheet', 'Site Safety Plan.gdoc', 'Supplier Contracts.gsheet'] },
@@ -19,22 +20,25 @@ const ALL = [
 ]
 
 export default function Knowledge() {
-  const { state } = useOutletContext()
+  const { state, reload } = useOutletContext()
   const toast = useToast()
   const [busy, setBusy] = useState(null)
   const sources = state.sources
   const totalDocs = sources.reduce((a, s) => a + s.docs, 0)
 
-  const connect = (src) => {
-    if (sources.find((s) => s.id === src.id)) return
+  const connect = async (src) => {
+    if (sources.find((s) => s.id === src.id) || busy) return
     setBusy(src.id)
-    setTimeout(() => {
-      const s = load()
-      s.sources.push({ id: src.id, name: src.name, docs: 20 + Math.floor(Math.random() * 120), lastSync: Date.now() })
-      save(s); setBusy(null); toast(`${src.name} connected`)
-    }, 1300)
+    // brief delay so the "indexing" feels real
+    await new Promise((r) => setTimeout(r, 1100))
+    try { await api.connectSource(src.id); await reload(); toast(`${src.name} connected`) }
+    catch (e) { toast(e.message, { tone: 'stamp' }) }
+    finally { setBusy(null) }
   }
-  const resync = (id) => { const s = load(); const src = s.sources.find((x) => x.id === id); src.lastSync = Date.now(); save(s); toast('Re-synced') }
+  const resync = async (id) => {
+    try { await api.resyncSource(id); await reload(); toast('Re-synced') }
+    catch (e) { toast(e.message, { tone: 'stamp' }) }
+  }
 
   return (
     <div>

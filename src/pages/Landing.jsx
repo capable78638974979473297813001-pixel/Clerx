@@ -1,11 +1,17 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { Logo, Button, Stamp, Card, Eyebrow, Icon } from '../components/ui'
 import { StampMark } from '../components/ui'
-import { seedDemo } from '../lib/store'
+import { useAuth } from '../lib/auth'
+import { useToast } from '../components/kit'
 
 function useLiveDemo() {
   const nav = useNavigate()
-  return () => { seedDemo(); nav('/app') }
+  const { demo } = useAuth()
+  const toast = useToast()
+  return async () => {
+    try { await demo(); nav('/app') }
+    catch (e) { toast(e.message, { tone: 'stamp' }) }
+  }
 }
 
 /* ============================ NAV ============================ */
@@ -23,7 +29,7 @@ function Nav() {
         </nav>
         <div className="flex items-center gap-2">
           <Button as={Link} to="/join" variant="ghost" size="sm">Employee entry</Button>
-          <Button as={Link} to="/setup" size="sm">Open a file <Icon.arrow size={15} /></Button>
+          <Button as={Link} to="/signup" size="sm">Open a file <Icon.arrow size={15} /></Button>
         </div>
       </div>
     </header>
@@ -49,7 +55,7 @@ function Hero() {
             question on the spot — and never says a word they're not cleared to hear.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Button as={Link} to="/setup" size="lg">Open your company file <Icon.arrow size={18} /></Button>
+            <Button as={Link} to="/signup" size="lg">Open your company file <Icon.arrow size={18} /></Button>
             <Button onClick={demo} variant="outline" size="lg">Explore a live demo</Button>
           </div>
           <div className="mt-6 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-ink-faint">
@@ -232,7 +238,7 @@ function Rates() {
                   </li>
                 ))}
               </ul>
-              <Button as={Link} to="/setup" variant={t.featured ? 'primary' : 'outline'} className="mt-7 w-full">Open a file</Button>
+              <Button as={Link} to="/signup" variant={t.featured ? 'primary' : 'outline'} className="mt-7 w-full">Open a file</Button>
             </div>
           ))}
         </div>
@@ -254,7 +260,7 @@ function CTA() {
           Open your company file in a few minutes. Free to start, no card required.
         </p>
         <div className="mt-9 flex justify-center">
-          <Button as={Link} to="/setup" variant="outline" size="lg">Open your company file <Icon.arrow size={18} /></Button>
+          <Button as={Link} to="/signup" variant="outline" size="lg">Open your company file <Icon.arrow size={18} /></Button>
         </div>
       </div>
     </section>
