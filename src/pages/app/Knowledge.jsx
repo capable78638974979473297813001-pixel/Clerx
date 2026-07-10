@@ -3,7 +3,7 @@ import { useOutletContext } from 'react-router-dom'
 import { PageHead } from '../../components/AppShell'
 import { Button, Stamp, Card, Icon } from '../../components/ui'
 import { useToast, Bar } from '../../components/kit'
-import { NotionConnectModal } from '../../components/NotionConnect'
+import { ProviderConnectModal } from '../../components/ProviderConnect'
 import { TOPICS, timeAgo } from '../../lib/store'
 import { api } from '../../lib/api'
 
@@ -24,13 +24,13 @@ export default function Knowledge() {
   const { state, reload } = useOutletContext()
   const toast = useToast()
   const [busy, setBusy] = useState(null)
-  const [notionOpen, setNotionOpen] = useState(false)
+  const [connectKind, setConnectKind] = useState(null)
   const sources = state.sources
   const totalDocs = sources.reduce((a, s) => a + s.docs, 0)
 
   const connect = async (src) => {
     if (sources.find((s) => s.id === src.id) || busy) return
-    if (src.id === 'notion') { setNotionOpen(true); return } // real connect via token modal
+    if (src.id === 'notion' || src.id === 'slack') { setConnectKind(src.id); return } // real connect via token modal
     setBusy(src.id)
     // brief delay so the "indexing" feels real
     await new Promise((r) => setTimeout(r, 1100))
@@ -116,7 +116,7 @@ export default function Knowledge() {
         </div>
       </Card>
 
-      <NotionConnectModal open={notionOpen} onClose={() => setNotionOpen(false)} onConnected={() => reload()} />
+      <ProviderConnectModal provider={connectKind} open={!!connectKind} onClose={() => setConnectKind(null)} onConnected={() => reload()} />
     </div>
   )
 }

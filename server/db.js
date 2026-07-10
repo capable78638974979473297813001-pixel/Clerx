@@ -121,15 +121,17 @@ export const companyOut = (r) => r && ({
   blurb: r.blurb, plan: r.plan,
 })
 export const sourceOut = (r) => r && ({ id: r.kind, name: r.name, docs: r.docs, lastSync: r.last_sync })
-// Like sourceOut, but for real sources (Notion) also attaches live document titles.
+// Real, token-based sources whose documents are live (not simulated).
+const REAL_KINDS = new Set(['notion', 'slack'])
+// Like sourceOut, but for real sources also attaches live document titles.
 export const sourceOutFull = (r) => {
   const s = sourceOut(r)
   if (!s) return s
-  if (r.kind === 'notion') {
+  if (REAL_KINDS.has(r.kind)) {
     s.real = true
     s.files = all(
       'SELECT title FROM documents WHERE company_id=? AND source_kind=? ORDER BY updated_at DESC LIMIT 6',
-      r.company_id, 'notion',
+      r.company_id, r.kind,
     ).map((d) => d.title)
   }
   return s

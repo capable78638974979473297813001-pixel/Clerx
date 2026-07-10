@@ -35,17 +35,19 @@ GET  /api/topics        POST /api/join   POST /api/ask     (public, code-gated)
 
 ## What's real vs. mocked
 
-- **Real:** accounts, sessions, password hashing, a SQLite database, per-company data isolation, server-enforced topic permissions, and the **Notion integration** — it validates a real integration token, pulls the workspace's actual pages, indexes their text, classifies each into a topic, and answers employee questions from that real content (topic-gated, with the source page cited). Tokens are AES-256-GCM encrypted at rest and never returned to the client.
-- **Mocked (for now):** company verification (simulated web check), the Drive/Slack integrations (simulated connect + indexing), and the answer engine's retrieval, which is keyword-based rather than semantic/LLM.
-- **Next:** an LLM for better answers over the indexed content; Drive/Slack via the same document pipeline; a real search API for verification.
+- **Real:** accounts, sessions, password hashing, a SQLite database, per-company data isolation, server-enforced topic permissions, and the **Notion and Slack integrations** — each validates a real token, pulls the workspace's actual content (Notion pages / Slack channel history), indexes the text, classifies each item into a topic, and answers employee questions from that real content (topic-gated, with the source cited). Tokens are AES-256-GCM encrypted at rest and never returned to the client.
+- **Mocked (for now):** company verification (simulated web check), the Google Drive integration (simulated connect + indexing), and the answer engine's retrieval, which is keyword-based rather than semantic/LLM.
+- **Next:** an LLM for better answers over the indexed content; Google Drive via the same document pipeline; a real search API for verification.
 
-### Connect your Notion (real)
+Real sources share one pipeline: a provider module (`server/notion.js`, `server/slack.js`) exposes `ingest(token) → { workspace, docs }`; the route encrypts the token, stores the docs, and classifies each into a topic. Adding a provider is one module + one entry in the `PROVIDERS` map.
 
-1. Go to **notion.so/my-integrations** → **New integration** → copy the **Internal Integration Secret** (`ntn_…`).
-2. Open each page you want Clerx to read → **•••** → **Connections** → add your integration.
-3. In Clerx → **Knowledge** → **Notion** → paste the token. Clerx pulls those pages and files them into topics.
+### Connect a real source
 
-Employees are then answered from those real pages — but only for topics their lead cleared them for.
+**Notion** — notion.so/my-integrations → New integration → copy the secret (`ntn_…`); share pages with it (page ••• → Connections); paste in Clerx → Knowledge → Notion.
+
+**Slack** — api.slack.com/apps → Create New App → add Bot Token Scopes `channels:read` + `channels:history` → Install to Workspace → copy the Bot User OAuth Token (`xoxb-…`); `/invite @YourApp` into channels; paste in Clerx → Knowledge → Slack.
+
+Employees are then answered from that real content — but only for topics their lead cleared them for.
 
 ## Run locally
 

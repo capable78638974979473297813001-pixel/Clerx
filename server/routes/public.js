@@ -29,7 +29,7 @@ router.post('/ask', (req, res) => {
   const allowed = JSON.parse(emp.topics || '[]')
   // Prefer the company's REAL indexed documents (e.g. Notion); fall back to the
   // built-in knowledge base when nothing relevant is on file.
-  const docs = all('SELECT title, url, content, topic FROM documents WHERE company_id=?', emp.company_id)
+  const docs = all('SELECT title, url, content, topic, source_kind FROM documents WHERE company_id=?', emp.company_id)
   const result = answerFromDocs(question, allowed, docs) || answerFor(question, allowed)
 
   run('UPDATE employees SET questions = questions + 1, last_active=? WHERE id=?', Date.now(), emp.id)

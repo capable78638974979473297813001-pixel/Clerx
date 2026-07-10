@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Logo, Button, Stamp, Card, Field, Input, Icon } from '../components/ui'
 import { Avatar, useToast } from '../components/kit'
-import { NotionConnectModal } from '../components/NotionConnect'
+import { ProviderConnectModal } from '../components/ProviderConnect'
 import { useAuth } from '../lib/auth'
 import { api } from '../lib/api'
 import { TOPICS } from '../lib/store'
@@ -163,12 +163,12 @@ const SOURCES = [
 
 function KnowledgeStep({ sources, setSources, next, back }) {
   const [busy, setBusy] = useState(null)
-  const [notionOpen, setNotionOpen] = useState(false)
+  const [connectKind, setConnectKind] = useState(null)
   const toast = useToast()
 
   const connect = async (src) => {
     if (sources.find((s) => s.id === src.id) || busy) return
-    if (src.id === 'notion') { setNotionOpen(true); return } // real connect via token modal
+    if (src.id === 'notion' || src.id === 'slack') { setConnectKind(src.id); return } // real connect via token modal
     setBusy(src.id)
     await new Promise((r) => setTimeout(r, 1100))
     try { const created = await api.connectSource(src.id); setSources((prev) => [...prev, created]) }
@@ -178,8 +178,8 @@ function KnowledgeStep({ sources, setSources, next, back }) {
   const totalDocs = sources.reduce((a, s) => a + s.docs, 0)
 
   return (
-    <StepCard tab="File 02" title="File the knowledge" sub="Connect the tools your team runs on. Notion connects for real; the others are simulated for now.">
-      <NotionConnectModal open={notionOpen} onClose={() => setNotionOpen(false)} onConnected={(src) => setSources((prev) => [...prev, src])} />
+    <StepCard tab="File 02" title="File the knowledge" sub="Connect the tools your team runs on. Notion and Slack connect for real; the others are simulated for now.">
+      <ProviderConnectModal provider={connectKind} open={!!connectKind} onClose={() => setConnectKind(null)} onConnected={(src) => setSources((prev) => [...prev, src])} />
       <div className="grid gap-3 sm:grid-cols-2">
         {SOURCES.map((src) => {
           const done = sources.find((s) => s.id === src.id)
