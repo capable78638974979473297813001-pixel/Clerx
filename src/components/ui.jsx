@@ -1,61 +1,105 @@
 import { Link } from 'react-router-dom'
 import { Icon } from '../lib/icons'
 
-export function Logo({ size = 'md', to = '/' }) {
-  const dim = size === 'lg' ? 40 : size === 'sm' ? 26 : 32
-  const text = size === 'lg' ? 'text-2xl' : size === 'sm' ? 'text-lg' : 'text-xl'
+/* ---- Logo: a rubber-stamp monogram + Fraunces wordmark ---- */
+export function Logo({ size = 'md', to = '/', dark = false }) {
+  const dim = size === 'lg' ? 46 : size === 'sm' ? 30 : 36
+  const text = size === 'lg' ? 'text-3xl' : size === 'sm' ? 'text-xl' : 'text-2xl'
+  const ink = dark ? 'text-paper' : 'text-ink'
   const inner = (
-    <span className="flex items-center gap-2.5 select-none">
-      <span
-        className="grad-brand grid place-items-center rounded-xl glow"
-        style={{ width: dim, height: dim }}
-      >
-        <svg viewBox="0 0 24 24" width={dim * 0.6} height={dim * 0.6} fill="none">
-          <path d="M17 8.5a5 5 0 1 0 0 7" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" />
-          <circle cx="18" cy="12" r="1.5" fill="#fff" />
-        </svg>
+    <span className={`flex items-center gap-2.5 select-none ${ink}`}>
+      <span className="shrink-0" style={{ width: dim, height: dim }}>
+        <StampMark dim={dim} />
       </span>
-      <span className={`font-semibold tracking-tight text-white ${text}`}>Clerx</span>
+      <span className={`font-display font-semibold tracking-tight ${text}`}>
+        Clerx<span className="text-stamp">.</span>
+      </span>
     </span>
   )
   return to ? <Link to={to}>{inner}</Link> : inner
 }
 
+export function StampMark({ dim = 36 }) {
+  return (
+    <svg viewBox="0 0 48 48" width={dim} height={dim} aria-hidden>
+      <g transform="rotate(-6 24 24)">
+        <rect x="4" y="4" width="40" height="40" rx="9" fill="none" stroke="var(--color-stamp)" strokeWidth="2.5" />
+        <rect x="8.5" y="8.5" width="31" height="31" rx="6" fill="none" stroke="var(--color-stamp)" strokeWidth="1" opacity="0.5" />
+        <text x="24" y="31" textAnchor="middle" fontFamily="Fraunces, serif" fontWeight="900" fontSize="22" fill="var(--color-stamp)">C</text>
+      </g>
+    </svg>
+  )
+}
+
+/* ---- Button: solid fill, hard offset shadow, presses on click ---- */
 export function Button({ as = 'button', variant = 'primary', size = 'md', className = '', children, ...props }) {
   const sizes = {
-    sm: 'h-9 px-4 text-sm',
+    sm: 'h-9 px-3.5 text-[13px]',
     md: 'h-11 px-5 text-sm',
-    lg: 'h-13 px-7 text-base',
+    lg: 'h-13 px-6 text-[15px]',
   }
   const variants = {
-    primary: 'grad-brand text-white hover:brightness-110 glow',
-    ghost: 'text-slate-300 hover:text-white hover:bg-white/5',
-    outline: 'border border-white/12 text-white hover:bg-white/5',
-    subtle: 'bg-white/8 text-white hover:bg-white/12',
-    mint: 'bg-mint-500 text-ink-950 font-semibold hover:brightness-105',
+    primary: 'bg-stamp text-paper border-ink shadow-hard hover:-translate-y-0.5 hover:shadow-hard-lg active:translate-x-1 active:translate-y-1 active:shadow-none',
+    ink: 'bg-ink text-paper border-ink shadow-hard hover:-translate-y-0.5 hover:shadow-hard-lg active:translate-x-1 active:translate-y-1 active:shadow-none',
+    ledger: 'bg-ledger text-paper border-ink shadow-hard hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 active:shadow-none',
+    outline: 'bg-paper text-ink border-ink shadow-hard hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 active:shadow-none',
+    ghost: 'bg-transparent text-ink border-transparent hover:bg-ink/5',
   }
-  const cls = `inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed ${sizes[size]} ${variants[variant]} ${className}`
+  const cls = `inline-flex items-center justify-center gap-2 rounded-lg border-[1.5px] font-medium transition-all duration-150 disabled:opacity-40 disabled:pointer-events-none ${sizes[size]} ${variants[variant]} ${className}`
   const Comp = as
   return <Comp className={cls} {...props}>{children}</Comp>
 }
 
-export function Badge({ children, color, className = '' }) {
+/* ---- Stamp badge (APPROVED / RESTRICTED / labels) ---- */
+export function Stamp({ tone = 'ink', rotate = -3, className = '', children, animate = false, style }) {
+  const tones = {
+    stamp: 'text-stamp',
+    ledger: 'text-ledger',
+    ochre: 'text-ochre',
+    ink: 'text-ink',
+    blue: 'text-ink-blue',
+  }
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${className}`}
-      style={color ? { background: `${color}1a`, color, border: `1px solid ${color}33` } : undefined}
+      className={`stamp stamp-ink ${tones[tone]} ${animate ? 'stamp-in' : ''} ${className}`}
+      style={{ transform: `rotate(${rotate}deg)`, '--rot': `${rotate}deg`, ...style }}
     >
       {children}
     </span>
   )
 }
 
+/* ---- Filing card (paper + ink border + hard shadow) ---- */
+export function Card({ className = '', children, tab, ...props }) {
+  return (
+    <div className={`relative rounded-xl border-[1.5px] border-ink bg-paper ${className}`} {...props}>
+      {tab && (
+        <span className="absolute -top-3 left-5 rounded-t-md border-[1.5px] border-b-0 border-ink bg-paper-2 px-3 py-0.5 font-mono text-[11px] uppercase tracking-widest text-ink-soft">
+          {tab}
+        </span>
+      )}
+      {children}
+    </div>
+  )
+}
+
+/* ---- Eyebrow with a filing number ---- */
+export function Eyebrow({ no, children, className = '' }) {
+  return (
+    <div className={`eyebrow flex items-center gap-2.5 ${className}`}>
+      {no && <span className="text-stamp">No. {no}</span>}
+      {no && <span className="h-px w-6 bg-ink/30" />}
+      <span>{children}</span>
+    </div>
+  )
+}
+
 export function Field({ label, hint, children }) {
   return (
     <label className="block">
-      {label && <span className="mb-1.5 block text-sm font-medium text-slate-300">{label}</span>}
+      {label && <span className="mb-1.5 block font-mono text-[11px] uppercase tracking-widest text-ink-soft">{label}</span>}
       {children}
-      {hint && <span className="mt-1.5 block text-xs text-slate-500">{hint}</span>}
+      {hint && <span className="mt-1.5 block text-xs text-ink-soft">{hint}</span>}
     </label>
   )
 }
@@ -64,7 +108,7 @@ export function Input(props) {
   return (
     <input
       {...props}
-      className={`h-11 w-full rounded-xl border border-white/10 bg-ink-950/60 px-4 text-[15px] text-white placeholder:text-slate-500 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-500/30 ${props.className || ''}`}
+      className={`h-12 w-full rounded-lg border-[1.5px] border-ink bg-paper-2/60 px-4 text-[15px] text-ink placeholder:text-ink-faint outline-none transition focus:bg-paper focus:shadow-hard ${props.className || ''}`}
     />
   )
 }

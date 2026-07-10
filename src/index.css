@@ -1,74 +1,142 @@
 @import "tailwindcss";
 
+/* ============================================================
+   CLERX — "The Records Office"
+   Warm paper · ink · rubber-stamp vermillion · Fraunces serif
+   Hard print shadows. No glows. No gradients-on-black.
+   ============================================================ */
+
 @theme {
-  --color-ink-950: #0b0a1a;
-  --color-ink-900: #14122b;
-  --color-ink-800: #1e1b3a;
-  --color-ink-700: #2a2650;
+  --color-paper:    #F2ECDC;
+  --color-paper-2:  #EAE0C9;
+  --color-paper-3:  #E1D5B8;
+  --color-ink:      #1E1B14;
+  --color-ink-soft: #6B6047;
+  --color-ink-faint:#948765;
 
-  --color-brand-50: #f1efff;
-  --color-brand-100: #e5e1ff;
-  --color-brand-200: #ccc4ff;
-  --color-brand-300: #ab9dff;
-  --color-brand-400: #8b76fc;
-  --color-brand-500: #6d5efc;
-  --color-brand-600: #5a45e8;
-  --color-brand-700: #4a37c2;
-  --color-brand-800: #3d2f9c;
-  --color-brand-900: #342a7e;
+  --color-stamp:      #D23B22;
+  --color-stamp-deep: #A82B16;
+  --color-ledger:     #2E6A52;
+  --color-ledger-deep:#1F4C3A;
+  --color-ochre:      #C4872E;
+  --color-ink-blue:   #274B73;
 
-  --color-mint-400: #34d9a8;
-  --color-mint-500: #17c497;
-
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Fraunces", "Times New Roman", serif;
+  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, monospace;
 }
 
 @layer base {
-  html {
-    scroll-behavior: smooth;
-  }
+  html { scroll-behavior: smooth; }
   body {
-    @apply bg-ink-950 text-slate-200 font-sans antialiased;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
   }
-  ::selection {
-    background: var(--color-brand-500);
-    color: white;
-  }
+  ::selection { background: var(--color-stamp); color: var(--color-paper); }
+  h1, h2, h3, h4 { font-family: var(--font-display); }
+  /* Fraunces optical + a touch of "wonk" character */
+  .font-display { font-family: var(--font-display); font-optical-sizing: auto; }
 }
 
 @layer utilities {
-  .glass {
-    background: rgba(30, 27, 58, 0.55);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+  /* ---- paper texture + ledger rules ---- */
+  .grain::before {
+    content: "";
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    opacity: 0.5;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+    mix-blend-mode: multiply;
   }
-  .grad-text {
-    background: linear-gradient(100deg, #ab9dff 0%, #6d5efc 50%, #34d9a8 120%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+  .ledger-lines {
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 31px,
+      rgba(39, 75, 115, 0.10) 31px,
+      rgba(39, 75, 115, 0.10) 32px
+    );
   }
-  .grad-brand {
-    background-image: linear-gradient(135deg, #6d5efc 0%, #5a45e8 100%);
+  .dotgrid {
+    background-image: radial-gradient(circle at 1px 1px, rgba(30,27,20,0.16) 1px, transparent 0);
+    background-size: 22px 22px;
   }
-  .glow {
-    box-shadow: 0 0 0 1px rgba(109, 94, 252, 0.2), 0 20px 60px -20px rgba(109, 94, 252, 0.55);
+
+  /* ---- hard print shadows (the signature) ---- */
+  .shadow-hard    { box-shadow: 4px 4px 0 var(--color-ink); }
+  .shadow-hard-lg { box-shadow: 7px 7px 0 var(--color-ink); }
+  .shadow-hard-red{ box-shadow: 4px 4px 0 var(--color-stamp-deep); }
+  .shadow-hard-grn{ box-shadow: 4px 4px 0 var(--color-ledger-deep); }
+
+  /* ---- rubber stamp ---- */
+  .stamp {
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    border: 2.5px solid currentColor;
+    border-radius: 6px;
+    padding: 0.3rem 0.7rem;
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-weight: 700;
+    font-size: 0.72rem;
+    line-height: 1;
+    background: color-mix(in srgb, currentColor 8%, transparent);
   }
-  .card {
-    @apply rounded-2xl border border-white/8 bg-ink-900/60;
+  .stamp-ink { box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 30%, transparent); }
+
+  /* ---- eyebrow / filing label ---- */
+  .eyebrow {
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    font-size: 0.7rem;
+    color: var(--color-ink-soft);
   }
+
+  /* ---- animated ink underline for links ---- */
+  .ink-link {
+    position: relative; white-space: nowrap;
+  }
+  .ink-link::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px;
+    background: currentColor; transform: scaleX(0); transform-origin: left;
+    transition: transform 0.28s cubic-bezier(0.16,1,0.3,1);
+  }
+  .ink-link:hover::after { transform: scaleX(1); }
+
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
 
-@keyframes float-slow {
-  0%, 100% { transform: translateY(0) }
-  50% { transform: translateY(-14px) }
+/* highlighter swipe under a word */
+.marker {
+  background-image: linear-gradient(120deg, color-mix(in srgb, var(--color-ochre) 55%, transparent), color-mix(in srgb, var(--color-ochre) 55%, transparent));
+  background-repeat: no-repeat;
+  background-size: 100% 42%;
+  background-position: 0 78%;
+  padding: 0 0.05em;
 }
-.animate-float-slow { animation: float-slow 7s ease-in-out infinite; }
 
-@keyframes fade-up {
-  from { opacity: 0; transform: translateY(12px) }
-  to { opacity: 1; transform: translateY(0) }
+/* animations */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-.animate-fade-up { animation: fade-up 0.5s cubic-bezier(0.16,1,0.3,1) both; }
+.rise { animation: rise 0.55s cubic-bezier(0.16,1,0.3,1) both; }
+
+@keyframes stamp-in {
+  0%   { opacity: 0; transform: rotate(var(--rot, -8deg)) scale(1.7); }
+  60%  { opacity: 1; }
+  100% { opacity: 1; transform: rotate(var(--rot, -8deg)) scale(1); }
+}
+.stamp-in { animation: stamp-in 0.4s cubic-bezier(0.34,1.56,0.64,1) both; }
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.marquee { animation: marquee 26s linear infinite; }
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.15} }
+.blink { animation: blink 1.1s steps(1) infinite; }
