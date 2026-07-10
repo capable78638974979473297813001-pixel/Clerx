@@ -1,3 +1,4 @@
+import './env.js' // load .env before anything reads process.env
 import express from 'express'
 import cookieParser from 'cookie-parser'
 import { fileURLToPath } from 'node:url'

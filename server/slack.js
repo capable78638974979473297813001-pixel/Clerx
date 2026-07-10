@@ -94,12 +94,20 @@ export async function fetchChannelText(token, channelId, { limit = 100, maxChars
   return lines.reverse().join('\n').slice(0, maxChars) // oldest→newest reads better
 }
 
+// Join a public channel so history becomes readable (needs channels:join).
+// Best-effort: if the scope is missing we just skip and rely on membership.
+async function tryJoin(token, channelId) {
+  try { await call(token, 'conversations.join', { channel: channelId }, 'POST') }
+  catch { /* missing scope / already in / archived — ignore */ }
+}
+
 export async function ingest(token, { maxChannels = 15 } = {}) {
   const workspace = await validateToken(token)
   const channels = await listChannels(token, maxChannels)
   const docs = []
   const teamUrl = (workspace.url || '').replace(/\/$/, '')
   for (const c of channels) {
+    if (!c.isMember) await tryJoin(token, c.id) // auto-join so we can read history
     const content = await fetchChannelText(token, c.id)
     if (!content) continue // unreadable / empty channel
     docs.push({

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { PageHead } from '../../components/AppShell'
 import { Button, Stamp, Card, Icon } from '../../components/ui'
@@ -30,9 +30,22 @@ export default function Knowledge() {
   const sources = state.sources
   const totalDocs = sources.reduce((a, s) => a + s.docs, 0)
 
+  // Show the result of an OAuth round-trip (redirect back with ?connected / ?source_error).
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    const done = p.get('connected'); const err = p.get('source_error')
+    if (!done && !err) return
+    if (done) { toast(`${ALL.find((a) => a.id === done)?.name || done} connected`); reload() }
+    else toast(err, { tone: 'stamp' })
+    window.history.replaceState({}, '', '/app/knowledge')
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   const connect = async (src) => {
     if (sources.find((s) => s.id === src.id) || busy) return
-    if (src.id === 'notion' || src.id === 'slack') { setConnectKind(src.id); return } // real connect via token modal
+    if (src.id === 'notion' || src.id === 'slack') {
+      if (state.oauth?.[src.id]) { window.location.href = `/api/sources/oauth/${src.id}/start?return=${encodeURIComponent('/app/knowledge')}`; return } // one-click
+      setConnectKind(src.id); return // fall back to paste-a-token modal
+    }
     if (src.id === 'upload') { setUploadOpen(true); return } // real file upload
     setBusy(src.id)
     // brief delay so the "indexing" feels real

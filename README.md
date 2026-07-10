@@ -41,13 +41,18 @@ GET  /api/topics        POST /api/join   POST /api/ask     (public, code-gated)
 
 Real sources share one pipeline: a provider module (`server/notion.js`, `server/slack.js`) exposes `ingest(token) → { workspace, docs }`; the route encrypts the token, stores the docs, and classifies each into a topic. Adding a provider is one module + one entry in the `PROVIDERS` map.
 
-### Connect a real source
+### Connecting a source — two modes
 
-**Notion** — notion.so/my-integrations → New integration → copy the secret (`ntn_…`); share pages with it (page ••• → Connections); paste in Clerx → Knowledge → Notion.
+**One-click OAuth (easiest for your users).** When you set OAuth credentials (see below), the Knowledge page shows a **Connect** button that redirects to Slack/Notion, the user clicks *Allow*, and they're done — no app to create, no token to copy, no channels to invite (Slack auto-joins public channels). This is the recommended setup for a real deployment.
 
-**Slack** — api.slack.com/apps → Create New App → add Bot Token Scopes `channels:read` + `channels:history` → Install to Workspace → copy the Bot User OAuth Token (`xoxb-…`); `/invite @YourApp` into channels; paste in Clerx → Knowledge → Slack.
+**Paste-a-token fallback (zero setup).** Without OAuth credentials, each source opens a short modal to paste a token — fully functional, just more steps for the user:
+- **Notion** — notion.so/my-integrations → New integration → copy the secret (`ntn_…`); share pages with it; paste it.
+- **Slack** — api.slack.com/apps → Create New App → Bot Token Scopes `channels:read` + `channels:history` + `channels:join` → Install → copy the Bot User OAuth Token (`xoxb-…`); paste it (Clerx auto-joins public channels).
+- **File upload** — always available: drop in text files (TXT, MD, CSV, JSON, LOG), read in the browser and indexed server-side. (PDF/DOCX need a parser and aren't supported yet.)
 
-**File upload** — Clerx → Knowledge → Uploaded files → drop in text files (TXT, MD, CSV, JSON, LOG). They're read in the browser and indexed on the server. (PDF/DOCX need a parser and aren't supported yet.)
+### Enabling one-click OAuth
+
+Copy `.env.example` → `.env` and fill in the credentials for a single Clerx app you register once per provider (see the file for exact scopes and redirect URLs), then restart. The redirect URL is `<CLERX_BASE_URL>/api/sources/oauth/<provider>/callback`. Clerx detects the credentials and switches those sources to one-click automatically; anything you leave blank stays on the paste-token fallback.
 
 Employees are then answered from that real content — but only for topics their lead cleared them for.
 

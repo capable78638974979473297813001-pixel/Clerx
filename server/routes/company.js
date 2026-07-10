@@ -3,6 +3,7 @@ import { one, all, run, companyOut, empOut, sourceOutFull, activityOut, uuid } f
 import { requireAuth } from '../auth.js'
 import { TOPICS } from '../engine.js'
 import { seedCompany } from '../seed.js'
+import { configuredMap } from '../oauth.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -15,7 +16,7 @@ router.get('/', (req, res) => {
   const employees = all('SELECT * FROM employees WHERE company_id=? ORDER BY joined_at DESC', cid(req)).map(empOut)
   const sources = all('SELECT * FROM sources WHERE company_id=? ORDER BY rowid', cid(req)).map(sourceOutFull)
   const activity = all('SELECT * FROM activity WHERE company_id=? ORDER BY ts DESC LIMIT 200', cid(req)).map(activityOut)
-  res.json({ company, employees, sources, activity, topics: TOPICS })
+  res.json({ company, employees, sources, activity, topics: TOPICS, oauth: configuredMap() })
 })
 
 // PATCH /api/company  { name, domain, plan }
@@ -47,7 +48,7 @@ router.post('/seed', (req, res) => {
   const employees = all('SELECT * FROM employees WHERE company_id=? ORDER BY joined_at DESC', cid(req)).map(empOut)
   const sources = all('SELECT * FROM sources WHERE company_id=? ORDER BY rowid', cid(req)).map(sourceOutFull)
   const activity = all('SELECT * FROM activity WHERE company_id=? ORDER BY ts DESC LIMIT 200', cid(req)).map(activityOut)
-  res.json({ company, employees, sources, activity, topics: TOPICS })
+  res.json({ company, employees, sources, activity, topics: TOPICS, oauth: configuredMap() })
 })
 
 // POST /api/company/reset → wipe workspace data (keeps the account + company shell)

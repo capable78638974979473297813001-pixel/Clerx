@@ -5,6 +5,7 @@ import { encrypt, decrypt } from '../crypto.js'
 import { classifyTopic } from '../engine.js'
 import * as notion from '../notion.js'
 import * as slack from '../slack.js'
+import * as oauth from '../oauth.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -43,25 +44,79 @@ router.post('/', async (req, res) => {
 })
 
 async function connectProvider(req, res, kind) {
-  const { mod, label } = PROVIDERS[kind]
+  const { label } = PROVIDERS[kind]
   const token = (req.body.token || '').trim()
   if (!token) return res.status(400).json({ error: `Paste your ${label} token.` })
-
-  let result
-  try { result = await mod.ingest(token) }
-  catch (e) { return res.status(e.status && e.status < 500 ? 400 : 502).json({ error: e.message }) }
-
-  if (result.docs.length === 0)
-    return res.status(400).json({ error: emptyMessage(kind) })
-
-  const id = uuid()
-  run('INSERT INTO sources(id, company_id, kind, name, docs, last_sync, config) VALUES(?,?,?,?,?,?,?)',
-    id, cid(req), kind, `${label} · ${result.workspace.name}`, result.docs.length, Date.now(),
-    JSON.stringify({ token: encrypt(token), workspace: result.workspace.name }))
-
-  indexDocs(cid(req), kind, result.docs)
-  res.status(201).json(sourceOutFull(one('SELECT * FROM sources WHERE id=?', id)))
+  try {
+    const src = await ingestAndStore(cid(req), kind, token)
+    res.status(201).json(src)
+  } catch (e) {
+    res.status(e.status && e.status < 500 ? 400 : 502).json({ error: e.message })
+  }
 }
+
+// Validate the token, pull + index content, and upsert the source (idempotent
+// so an OAuth reconnect replaces cleanly). Throws (with .status) on failure.
+async function ingestAndStore(companyId, kind, token) {
+  const { mod, label } = PROVIDERS[kind]
+  const result = await mod.ingest(token)
+  if (result.docs.length === 0) { const e = new Error(emptyMessage(kind)); e.status = 400; throw e }
+
+  const existing = one('SELECT id FROM sources WHERE company_id=? AND kind=?', companyId, kind)
+  const id = existing?.id || uuid()
+  const name = `${label} · ${result.workspace.name}`
+  const config = JSON.stringify({ token: encrypt(token), workspace: result.workspace.name })
+  if (existing) {
+    run('UPDATE sources SET name=?, docs=?, last_sync=?, config=? WHERE id=?',
+      name, result.docs.length, Date.now(), config, id)
+    run('DELETE FROM documents WHERE company_id=? AND source_kind=?', companyId, kind)
+  } else {
+    run('INSERT INTO sources(id, company_id, kind, name, docs, last_sync, config) VALUES(?,?,?,?,?,?,?)',
+      id, companyId, kind, name, result.docs.length, Date.now(), config)
+  }
+  indexDocs(companyId, kind, result.docs)
+  return sourceOutFull(one('SELECT * FROM sources WHERE id=?', id))
+}
+
+/* ---------------- One-click OAuth ---------------- */
+
+// GET /api/sources/oauth/config → which providers support one-click connect.
+router.get('/oauth/config', (_req, res) => res.json(oauth.configuredMap()))
+
+// GET /api/sources/oauth/:provider/start?return=/path → redirect to the provider.
+router.get('/oauth/:provider/start', (req, res) => {
+  const provider = req.params.provider
+  if (!oauth.isConfigured(provider)) return res.status(404).json({ error: 'This provider is not available for one-click connect.' })
+  const state = uuid()
+  const returnTo = typeof req.query.return === 'string' && req.query.return.startsWith('/') ? req.query.return : '/app/knowledge'
+  res.cookie('clerx_oauth', JSON.stringify({ provider, state, returnTo }), {
+    httpOnly: true, sameSite: 'lax', maxAge: 10 * 60 * 1000, path: '/',
+  })
+  res.redirect(oauth.authorizeUrl(provider, { state }))
+})
+
+// GET /api/sources/oauth/:provider/callback?code=&state= → exchange + index.
+router.get('/oauth/:provider/callback', async (req, res) => {
+  const provider = req.params.provider
+  let saved = {}
+  try { saved = JSON.parse(req.cookies?.clerx_oauth || '{}') } catch { /* ignore */ }
+  res.clearCookie('clerx_oauth', { path: '/' })
+
+  const bounce = (params) => res.redirect(`${saved.returnTo || '/app/knowledge'}?${new URLSearchParams(params)}`)
+
+  if (req.query.error) return bounce({ source_error: 'Authorization was cancelled.' })
+  if (!req.query.code || saved.provider !== provider || saved.state !== req.query.state)
+    return bounce({ source_error: 'That connection request expired. Try again.' })
+
+  try {
+    const { token, workspaceName } = await oauth.exchangeCode(provider, req.query.code)
+    void workspaceName // ingest re-derives the workspace name
+    await ingestAndStore(cid(req), provider, token)
+    bounce({ connected: provider })
+  } catch (e) {
+    bounce({ source_error: e.message || 'Connection failed.' })
+  }
+})
 
 function emptyMessage(kind) {
   if (kind === 'notion') return "The token works, but no pages are shared with it yet. In Notion, open a page → ••• → Connections → add your integration, then retry."

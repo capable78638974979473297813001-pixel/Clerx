@@ -23,9 +23,8 @@ const PROVIDERS = {
     connect: (t) => api.connectSlack(t),
     steps: [
       <>Go to <b>api.slack.com/apps</b> → <b>Create New App</b> → <b>From scratch</b>, pick your workspace.</>,
-      <><b>OAuth &amp; Permissions</b> → add Bot Token Scopes <b>channels:read</b> and <b>channels:history</b> → <b>Install to Workspace</b>.</>,
-      <>Copy the <b>Bot User OAuth Token</b> (<b>xoxb-…</b>). In Slack, run <b>/invite @YourApp</b> in the channels Clerx should read.</>,
-      <>Paste the token below.</>,
+      <><b>OAuth &amp; Permissions</b> → add Bot Token Scopes <b>channels:read</b>, <b>channels:history</b>, <b>channels:join</b> → <b>Install to Workspace</b>.</>,
+      <>Copy the <b>Bot User OAuth Token</b> (<b>xoxb-…</b>) and paste it below. Clerx adds itself to your public channels automatically.</>,
     ],
   },
 }

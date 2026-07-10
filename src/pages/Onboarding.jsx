@@ -16,17 +16,29 @@ export default function Onboarding() {
   const [step, setStep] = useState(0)
   const [employees, setEmployees] = useState([])
   const [sources, setSources] = useState([])
+  const [oauth, setOauth] = useState({})
   const [ready, setReady] = useState(false)
+  const toast = useToast()
 
   useEffect(() => {
     if (authLoading) return
     if (!user) { nav('/signup', { replace: true }); return }
     api.workspace().then((ws) => {
-      setEmployees(ws.employees); setSources(ws.sources)
+      setEmployees(ws.employees); setSources(ws.sources); setOauth(ws.oauth || {})
       if (ws.company?.verified) setStep((s) => Math.max(s, 1))
       setReady(true)
     }).catch(() => setReady(true))
   }, [authLoading, user, nav])
+
+  // Surface the result of an OAuth round-trip (redirect back to /setup).
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    const done = p.get('connected'); const err = p.get('source_error')
+    if (!done && !err) return
+    if (done) toast(`${done[0].toUpperCase() + done.slice(1)} connected`)
+    else toast(err, { tone: 'stamp' })
+    window.history.replaceState({}, '', '/setup')
+  }, [toast])
 
   const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1))
   const back = () => setStep((s) => Math.max(s - 1, 0))
@@ -49,7 +61,7 @@ export default function Onboarding() {
           <Stepper step={step} />
           <div className="mt-8">
             {step === 0 && <CompanyStep company={company} refresh={refresh} next={next} />}
-            {step === 1 && <KnowledgeStep sources={sources} setSources={setSources} next={next} back={back} />}
+            {step === 1 && <KnowledgeStep sources={sources} setSources={setSources} oauth={oauth} next={next} back={back} />}
             {step === 2 && <TeamStep employees={employees} setEmployees={setEmployees} next={next} back={back} />}
             {step === 3 && <CodesStep employees={employees} nav={nav} back={back} />}
           </div>
@@ -162,7 +174,7 @@ const SOURCES = [
   { id: 'upload', name: 'Upload files', icon: Icon.file, desc: 'PDF, DOCX, CSV' },
 ]
 
-function KnowledgeStep({ sources, setSources, next, back }) {
+function KnowledgeStep({ sources, setSources, oauth = {}, next, back }) {
   const [busy, setBusy] = useState(null)
   const [connectKind, setConnectKind] = useState(null)
   const [uploadOpen, setUploadOpen] = useState(false)
@@ -173,7 +185,10 @@ function KnowledgeStep({ sources, setSources, next, back }) {
 
   const connect = async (src) => {
     if (sources.find((s) => s.id === src.id) || busy) return
-    if (src.id === 'notion' || src.id === 'slack') { setConnectKind(src.id); return } // real connect via token modal
+    if (src.id === 'notion' || src.id === 'slack') {
+      if (oauth[src.id]) { window.location.href = `/api/sources/oauth/${src.id}/start?return=${encodeURIComponent('/setup')}`; return } // one-click
+      setConnectKind(src.id); return // fall back to paste-a-token modal
+    }
     if (src.id === 'upload') { setUploadOpen(true); return } // real file upload
     setBusy(src.id)
     await new Promise((r) => setTimeout(r, 1100))
