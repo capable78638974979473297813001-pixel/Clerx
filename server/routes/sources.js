@@ -69,6 +69,38 @@ function emptyMessage(kind) {
   return 'The token works, but nothing is shared with it yet.'
 }
 
+// POST /api/sources/upload/files  { files: [{ name, content }] }
+// Real text upload: the browser reads the files and sends their text; we index
+// it like any other document. Appends to the existing upload source if present.
+router.post('/upload/files', (req, res) => {
+  const files = Array.isArray(req.body.files) ? req.body.files.slice(0, 20) : []
+  if (!files.length) return res.status(400).json({ error: 'No files provided.' })
+
+  let src = one('SELECT * FROM sources WHERE company_id=? AND kind=?', cid(req), 'upload')
+  if (!src) {
+    const id = uuid()
+    run('INSERT INTO sources(id, company_id, kind, name, docs, last_sync) VALUES(?,?,?,?,?,?)',
+      id, cid(req), 'upload', 'Uploaded files', 0, Date.now())
+    src = one('SELECT * FROM sources WHERE id=?', id)
+  }
+
+  let added = 0
+  for (const f of files) {
+    const name = String(f.name || 'file').slice(0, 200)
+    const content = String(f.content || '').slice(0, 20000)
+    if (!content.trim()) continue
+    const topic = classifyTopic(`${name}\n${content}`)
+    run('INSERT INTO documents(id, company_id, source_kind, external_id, title, url, content, topic, updated_at) VALUES(?,?,?,?,?,?,?,?,?)',
+      uuid(), cid(req), 'upload', uuid(), name, null, content, topic, Date.now())
+    added++
+  }
+  if (!added) return res.status(400).json({ error: 'Those files had no readable text.' })
+
+  const total = one('SELECT COUNT(*) AS n FROM documents WHERE company_id=? AND source_kind=?', cid(req), 'upload').n
+  run('UPDATE sources SET docs=?, last_sync=? WHERE id=?', total, Date.now(), src.id)
+  res.status(201).json({ ...sourceOutFull(one('SELECT * FROM sources WHERE id=?', src.id)), added })
+})
+
 // POST /api/sources/:kind/resync
 router.post('/:kind/resync', async (req, res) => {
   const kind = req.params.kind

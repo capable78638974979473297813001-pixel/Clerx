@@ -76,7 +76,7 @@ export function answerFromDocs(question, allowedTopics, docs) {
       text: `That answer lives under **${label}**, which your file isn't cleared for. I've noted the request — your team lead can grant access if it fits your role.`,
     }
   }
-  const where = { notion: 'in your Notion', slack: 'in Slack' }[best.source_kind] || 'in your records'
+  const where = { notion: 'in your Notion', slack: 'in Slack', upload: 'in your uploaded files' }[best.source_kind] || 'in your records'
   return {
     blocked: false, topic: best.topic,
     source: { title: best.title, url: best.url, kind: best.source_kind },

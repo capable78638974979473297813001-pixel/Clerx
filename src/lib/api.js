@@ -43,6 +43,7 @@ export const api = {
   connectSource: (kind) => request('POST', '/sources', { kind }),
   connectNotion: (token) => request('POST', '/sources', { kind: 'notion', token }),
   connectSlack: (token) => request('POST', '/sources', { kind: 'slack', token }),
+  uploadFiles: (files) => request('POST', '/sources/upload/files', { files }),
   resyncSource: (kind) => request('POST', `/sources/${kind}/resync`),
 
   // employee (public, code-gated)

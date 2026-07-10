@@ -4,6 +4,7 @@ import { PageHead } from '../../components/AppShell'
 import { Button, Stamp, Card, Icon } from '../../components/ui'
 import { useToast, Bar } from '../../components/kit'
 import { ProviderConnectModal } from '../../components/ProviderConnect'
+import { UploadModal } from '../../components/UploadModal'
 import { TOPICS, timeAgo } from '../../lib/store'
 import { api } from '../../lib/api'
 
@@ -25,12 +26,14 @@ export default function Knowledge() {
   const toast = useToast()
   const [busy, setBusy] = useState(null)
   const [connectKind, setConnectKind] = useState(null)
+  const [uploadOpen, setUploadOpen] = useState(false)
   const sources = state.sources
   const totalDocs = sources.reduce((a, s) => a + s.docs, 0)
 
   const connect = async (src) => {
     if (sources.find((s) => s.id === src.id) || busy) return
     if (src.id === 'notion' || src.id === 'slack') { setConnectKind(src.id); return } // real connect via token modal
+    if (src.id === 'upload') { setUploadOpen(true); return } // real file upload
     setBusy(src.id)
     // brief delay so the "indexing" feels real
     await new Promise((r) => setTimeout(r, 1100))
@@ -67,7 +70,9 @@ export default function Knowledge() {
                   <div key={f} className="flex items-center gap-2 text-[12px] text-ink-soft"><Icon.file size={13} className="text-ink-faint" /> <span className="truncate">{f}</span></div>
                 ))}
               </div>
-              <button onClick={() => resync(s.id)} className="mt-3 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-ink-soft hover:text-ink"><Icon.arrowUR size={13} /> Re-sync now</button>
+              {s.id === 'upload'
+                ? <button onClick={() => setUploadOpen(true)} className="mt-3 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-ink-soft hover:text-ink"><Icon.plus size={13} /> Add more files</button>
+                : <button onClick={() => resync(s.id)} className="mt-3 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-ink-soft hover:text-ink"><Icon.arrowUR size={13} /> Re-sync now</button>}
             </Card>
           )
         })}
@@ -117,6 +122,7 @@ export default function Knowledge() {
       </Card>
 
       <ProviderConnectModal provider={connectKind} open={!!connectKind} onClose={() => setConnectKind(null)} onConnected={() => reload()} />
+      <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} onUploaded={() => reload()} />
     </div>
   )
 }

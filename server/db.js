@@ -121,19 +121,17 @@ export const companyOut = (r) => r && ({
   blurb: r.blurb, plan: r.plan,
 })
 export const sourceOut = (r) => r && ({ id: r.kind, name: r.name, docs: r.docs, lastSync: r.last_sync })
-// Real, token-based sources whose documents are live (not simulated).
-const REAL_KINDS = new Set(['notion', 'slack'])
-// Like sourceOut, but for real sources also attaches live document titles.
+// Like sourceOut, but attaches live document titles. A source counts as "real"
+// when it has actually-indexed documents (Notion/Slack/uploads), versus the
+// simulated/seeded connections that carry only a fabricated doc count.
 export const sourceOutFull = (r) => {
   const s = sourceOut(r)
   if (!s) return s
-  if (REAL_KINDS.has(r.kind)) {
-    s.real = true
-    s.files = all(
-      'SELECT title FROM documents WHERE company_id=? AND source_kind=? ORDER BY updated_at DESC LIMIT 6',
-      r.company_id, r.kind,
-    ).map((d) => d.title)
-  }
+  const files = all(
+    'SELECT title FROM documents WHERE company_id=? AND source_kind=? ORDER BY updated_at DESC LIMIT 6',
+    r.company_id, r.kind,
+  ).map((d) => d.title)
+  if (files.length) { s.real = true; s.files = files }
   return s
 }
 export const activityOut = (r) => r && ({

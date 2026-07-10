@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Logo, Button, Stamp, Card, Field, Input, Icon } from '../components/ui'
 import { Avatar, useToast } from '../components/kit'
 import { ProviderConnectModal } from '../components/ProviderConnect'
+import { UploadModal } from '../components/UploadModal'
 import { useAuth } from '../lib/auth'
 import { api } from '../lib/api'
 import { TOPICS } from '../lib/store'
@@ -164,11 +165,16 @@ const SOURCES = [
 function KnowledgeStep({ sources, setSources, next, back }) {
   const [busy, setBusy] = useState(null)
   const [connectKind, setConnectKind] = useState(null)
+  const [uploadOpen, setUploadOpen] = useState(false)
   const toast = useToast()
+
+  // Merge a connected/updated source into local state (replace if the kind already exists).
+  const upsert = (src) => setSources((prev) => [...prev.filter((s) => s.id !== src.id), src])
 
   const connect = async (src) => {
     if (sources.find((s) => s.id === src.id) || busy) return
     if (src.id === 'notion' || src.id === 'slack') { setConnectKind(src.id); return } // real connect via token modal
+    if (src.id === 'upload') { setUploadOpen(true); return } // real file upload
     setBusy(src.id)
     await new Promise((r) => setTimeout(r, 1100))
     try { const created = await api.connectSource(src.id); setSources((prev) => [...prev, created]) }
@@ -178,8 +184,9 @@ function KnowledgeStep({ sources, setSources, next, back }) {
   const totalDocs = sources.reduce((a, s) => a + s.docs, 0)
 
   return (
-    <StepCard tab="File 02" title="File the knowledge" sub="Connect the tools your team runs on. Notion and Slack connect for real; the others are simulated for now.">
-      <ProviderConnectModal provider={connectKind} open={!!connectKind} onClose={() => setConnectKind(null)} onConnected={(src) => setSources((prev) => [...prev, src])} />
+    <StepCard tab="File 02" title="File the knowledge" sub="Connect the tools your team runs on. Notion, Slack and file uploads are real; the others are simulated for now.">
+      <ProviderConnectModal provider={connectKind} open={!!connectKind} onClose={() => setConnectKind(null)} onConnected={upsert} />
+      <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} onUploaded={upsert} />
       <div className="grid gap-3 sm:grid-cols-2">
         {SOURCES.map((src) => {
           const done = sources.find((s) => s.id === src.id)
