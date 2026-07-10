@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Logo, Button, Stamp, Card, Field, Input, Icon } from '../components/ui'
+import { Avatar, useToast } from '../components/kit'
 import { load, save, TOPICS, genCode } from '../lib/store'
 
 const STEPS = ['Verify', 'File', 'Clear', 'Keys']
@@ -224,11 +225,18 @@ function KnowledgeStep({ state, patch, next, back }) {
 function TeamStep({ state, patch, next, back }) {
   const [employees, setEmployees] = useState(state.employees || [])
   const [name, setName] = useState('')
+  const toast = useToast()
 
   const add = () => {
     if (!name.trim()) return
-    const emp = { id: crypto.randomUUID(), name: name.trim(), code: genCode(), topics: [] }
+    const emp = {
+      id: crypto.randomUUID(), name: name.trim(), role: 'Staff', team: 'Field',
+      email: name.trim().toLowerCase().replace(/[^a-z]+/g, '.') + '@company.com',
+      code: genCode(), topics: [], status: 'invited',
+      joinedAt: Date.now(), lastActive: null, questions: 0,
+    }
     const list = [...employees, emp]; setEmployees(list); patch({ employees: list }); setName('')
+    toast(`${emp.name.split(' ')[0]} added`)
   }
   const toggle = (id, tid) => {
     const list = employees.map((e) => e.id === id ? { ...e, topics: e.topics.includes(tid) ? e.topics.filter((t) => t !== tid) : [...e.topics, tid] } : e)
@@ -267,7 +275,7 @@ export function EmpRow({ emp, onToggle, onRemove }) {
     <div className="rise rounded-lg border-[1.5px] border-ink bg-paper-2 p-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Initials name={emp.name} />
+          <Avatar name={emp.name} size={38} />
           <div>
             <div className="font-medium">{emp.name}</div>
             <div className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-ink-soft">
@@ -294,19 +302,12 @@ export function EmpRow({ emp, onToggle, onRemove }) {
   )
 }
 
-export function Initials({ name }) {
-  return (
-    <span className="grid h-9 w-9 place-items-center rounded-lg border-[1.5px] border-ink bg-paper font-mono text-[13px] font-bold">
-      {name.split(' ').map((p) => p[0]).slice(0, 2).join('')}
-    </span>
-  )
-}
-
 /* ---------- Step 4: Keys ---------- */
 function CodesStep({ state, nav, back }) {
   const [copied, setCopied] = useState(null)
+  const toast = useToast()
   const employees = state.employees || []
-  const copy = (code) => { navigator.clipboard?.writeText(code); setCopied(code); setTimeout(() => setCopied(null), 1500) }
+  const copy = (code) => { navigator.clipboard?.writeText(code); setCopied(code); toast('Code copied'); setTimeout(() => setCopied(null), 1500) }
 
   return (
     <StepCard tab="File 04" title="Hand out the keys" sub="Share each person's code. They enter it with their name to start asking Clerx — scoped to exactly what you stamped.">
@@ -314,7 +315,7 @@ function CodesStep({ state, nav, back }) {
         {employees.map((emp) => (
           <div key={emp.id} className="flex items-center justify-between rounded-lg border-[1.5px] border-ink bg-paper-2 px-4 py-3">
             <div className="flex items-center gap-3">
-              <Initials name={emp.name} />
+              <Avatar name={emp.name} size={38} />
               <div>
                 <div className="font-medium">{emp.name}</div>
                 <div className="font-mono text-[11px] uppercase tracking-wider text-ink-soft">{emp.topics.length} topic{emp.topics.length !== 1 ? 's' : ''} cleared</div>

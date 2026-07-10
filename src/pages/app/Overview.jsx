@@ -1,7 +1,7 @@
 import { useOutletContext, useNavigate, Link } from 'react-router-dom'
 import { PageHead } from '../../components/AppShell'
 import { Button, Stamp, Card, Icon } from '../../components/ui'
-import { Avatar, Bar } from '../../components/kit'
+import { Avatar, Bar, EmptyState } from '../../components/kit'
 import { TOPICS, topicById, timeAgo } from '../../lib/store'
 
 export default function Overview() {
@@ -31,8 +31,8 @@ export default function Overview() {
   return (
     <div>
       <PageHead no="00" kicker="The clerk's desk"
-        title={`Welcome back`}
-        sub={`Here's what's moving through ${company.name}.`}
+        title={greeting()}
+        sub={`Here's what's moving through ${company.name} today.`}
         action={<Button size="sm" onClick={() => nav('/app/staff')}><Icon.plus size={15} /> Add staff</Button>} />
 
       {/* stats */}
@@ -56,6 +56,10 @@ export default function Overview() {
             <h2 className="font-mono text-[12px] uppercase tracking-widest text-ink-soft">Recent activity</h2>
             <Link to="/app/activity" className="ink-link font-mono text-[11px] uppercase tracking-widest text-ink-soft hover:text-ink">View log →</Link>
           </div>
+          {(activity || []).length === 0 ? (
+            <EmptyState icon={Icon.stamp} title="Nothing on record yet"
+              body="Once your team starts asking questions, every one shows up here — answered or restricted." />
+          ) : (
           <Card className="divide-y-[1.5px] divide-ink/12 shadow-hard">
             {(activity || []).slice(0, 7).map((a) => {
               const t = topicById(a.topic)
@@ -73,6 +77,7 @@ export default function Overview() {
               )
             })}
           </Card>
+          )}
         </div>
 
         {/* topic demand + sources */}
@@ -107,4 +112,11 @@ export default function Overview() {
       </div>
     </div>
   )
+}
+
+function greeting() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 18) return 'Good afternoon'
+  return 'Good evening'
 }

@@ -36,6 +36,14 @@
   }
   ::selection { background: var(--color-stamp); color: var(--color-paper); }
   h1, h2, h3, h4 { font-family: var(--font-display); }
+
+  /* keyboard focus — visible, on-brand, never on mouse click */
+  :focus-visible {
+    outline: 2.5px solid var(--color-ink);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  button, a, input, textarea, select { outline-color: var(--color-ink); }
   /* Fraunces optical + a touch of "wonk" character */
   .font-display { font-family: var(--font-display); font-optical-sizing: auto; }
 }

@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Outlet, useNavigate } from 'react-router-dom'
+import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import AppShell from '../../components/AppShell'
 import { Logo, Button, Card, Icon, StampMark } from '../../components/ui'
 import { load, seedDemo } from '../../lib/store'
 
 export default function AppLayout() {
   const nav = useNavigate()
+  const loc = useLocation()
   const [state, setState] = useState(() => load())
 
   useEffect(() => {
@@ -34,7 +35,9 @@ export default function AppLayout() {
 
   return (
     <AppShell company={state.company}>
-      <Outlet context={{ state }} />
+      <div key={loc.pathname} className="rise">
+        <Outlet context={{ state }} />
+      </div>
     </AppShell>
   )
 }

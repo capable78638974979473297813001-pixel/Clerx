@@ -245,8 +245,7 @@ function Rates() {
 function CTA() {
   return (
     <section className="border-b-[1.5px] border-ink bg-stamp text-paper">
-      <div className="mx-auto max-w-6xl px-5 py-20 text-center">
-        <div className="pointer-events-none absolute" />
+      <div className="relative mx-auto max-w-6xl px-5 py-20 text-center">
         <Eyebrow className="justify-center !text-paper/70">Ready when you are</Eyebrow>
         <h2 className="mx-auto mt-4 max-w-2xl font-display text-4xl font-semibold leading-[1.02] sm:text-6xl">
           Give your team an answer for everything.
