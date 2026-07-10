@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { one, all, run, companyOut, empOut, sourceOut, activityOut, uuid } from '../db.js'
+import { one, all, run, companyOut, empOut, sourceOutFull, activityOut, uuid } from '../db.js'
 import { requireAuth } from '../auth.js'
 import { TOPICS } from '../engine.js'
 import { seedCompany } from '../seed.js'
@@ -13,7 +13,7 @@ const clean = (s) => (typeof s === 'string' ? s.trim() : '')
 router.get('/', (req, res) => {
   const company = companyOut(one('SELECT * FROM companies WHERE id=?', cid(req)))
   const employees = all('SELECT * FROM employees WHERE company_id=? ORDER BY joined_at DESC', cid(req)).map(empOut)
-  const sources = all('SELECT * FROM sources WHERE company_id=? ORDER BY rowid', cid(req)).map(sourceOut)
+  const sources = all('SELECT * FROM sources WHERE company_id=? ORDER BY rowid', cid(req)).map(sourceOutFull)
   const activity = all('SELECT * FROM activity WHERE company_id=? ORDER BY ts DESC LIMIT 200', cid(req)).map(activityOut)
   res.json({ company, employees, sources, activity, topics: TOPICS })
 })
@@ -45,7 +45,7 @@ router.post('/seed', (req, res) => {
   seedCompany(cid(req))
   const company = companyOut(one('SELECT * FROM companies WHERE id=?', cid(req)))
   const employees = all('SELECT * FROM employees WHERE company_id=? ORDER BY joined_at DESC', cid(req)).map(empOut)
-  const sources = all('SELECT * FROM sources WHERE company_id=? ORDER BY rowid', cid(req)).map(sourceOut)
+  const sources = all('SELECT * FROM sources WHERE company_id=? ORDER BY rowid', cid(req)).map(sourceOutFull)
   const activity = all('SELECT * FROM activity WHERE company_id=? ORDER BY ts DESC LIMIT 200', cid(req)).map(activityOut)
   res.json({ company, employees, sources, activity, topics: TOPICS })
 })
@@ -54,6 +54,7 @@ router.post('/seed', (req, res) => {
 router.post('/reset', (req, res) => {
   run('DELETE FROM employees WHERE company_id=?', cid(req))
   run('DELETE FROM sources WHERE company_id=?', cid(req))
+  run('DELETE FROM documents WHERE company_id=?', cid(req))
   run('DELETE FROM activity WHERE company_id=?', cid(req))
   run('UPDATE companies SET verified=0, verified_at=NULL, industry=NULL, blurb=NULL WHERE id=?', cid(req))
   res.json({ ok: true })

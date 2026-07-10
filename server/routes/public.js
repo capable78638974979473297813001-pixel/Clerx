@@ -1,6 +1,6 @@
 import { Router } from 'express'
-import { one, run, uuid, empOut, companyOut } from '../db.js'
-import { TOPICS, answerFor } from '../engine.js'
+import { one, all, run, uuid, empOut, companyOut } from '../db.js'
+import { TOPICS, answerFor, answerFromDocs } from '../engine.js'
 
 const router = Router()
 
@@ -27,7 +27,10 @@ router.post('/ask', (req, res) => {
   if (!emp) return res.status(404).json({ error: 'Unknown employee code.' })
 
   const allowed = JSON.parse(emp.topics || '[]')
-  const result = answerFor(question, allowed)
+  // Prefer the company's REAL indexed documents (e.g. Notion); fall back to the
+  // built-in knowledge base when nothing relevant is on file.
+  const docs = all('SELECT title, url, content, topic FROM documents WHERE company_id=?', emp.company_id)
+  const result = answerFromDocs(question, allowed, docs) || answerFor(question, allowed)
 
   run('UPDATE employees SET questions = questions + 1, last_active=? WHERE id=?', Date.now(), emp.id)
   if (result.topic) {

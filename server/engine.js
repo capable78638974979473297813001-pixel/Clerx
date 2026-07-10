@@ -26,6 +26,63 @@ const KNOWLEDGE = [
     a: "Standard hours are **8am–4pm**. Overtime must be pre-approved by your ops lead. Shift swaps are fine if both people confirm in the ops channel 24h ahead. PPE is mandatory on every active site." },
 ]
 
+// Classify a document into a topic by keyword. Returns null if nothing matches
+// (unclassified docs are never surfaced in answers — fail closed on permissions).
+export function classifyTopic(text) {
+  const hit = KNOWLEDGE.find((k) => k.q.test(text || ''))
+  return hit ? hit.topic : null
+}
+
+const STOP = new Set(['the', 'a', 'an', 'how', 'much', 'many', 'can', 'could', 'i', 'do', 'does',
+  'my', 'me', 'is', 'are', 'was', 'what', 'when', 'where', 'who', 'to', 'of', 'for', 'and', 'get',
+  'on', 'in', 'with', 'about', 'you', 'we', 'our', 'any', 'have', 'has'])
+const terms = (q) => [...new Set((String(q).toLowerCase().match(/[a-z0-9]{3,}/g) || []).filter((w) => !STOP.has(w)))]
+
+function excerpt(content, qt, len = 340) {
+  const text = String(content || '').replace(/\s+/g, ' ').trim()
+  if (!text) return 'This page is filed but has no readable text yet.'
+  const low = text.toLowerCase()
+  let idx = -1
+  for (const t of qt) { const i = low.indexOf(t); if (i >= 0 && (idx < 0 || i < idx)) idx = i }
+  const start = Math.max(0, idx < 0 ? 0 : idx - 60)
+  let s = text.slice(start, start + len)
+  if (start > 0) s = '…' + s
+  if (start + len < text.length) s += '…'
+  return s
+}
+
+// Search the company's REAL documents (topic-gated). Returns an answer, a
+// blocked notice, or null when nothing relevant is on file (caller falls back).
+export function answerFromDocs(question, allowedTopics, docs) {
+  const qt = terms(question)
+  if (!qt.length || !docs?.length) return null
+  let best = null, bestScore = 0
+  for (const d of docs) {
+    if (!d.topic) continue // unclassified → not surfaced (fail closed)
+    const title = String(d.title || '').toLowerCase()
+    const hay = (title + ' ' + String(d.content || '').toLowerCase())
+    let score = 0
+    for (const t of qt) {
+      if (title.includes(t)) score += 3
+      score += hay.split(t).length - 1
+    }
+    if (score > bestScore) { bestScore = score; best = d }
+  }
+  if (!best || bestScore < 2) return null
+  if (!allowedTopics.includes(best.topic)) {
+    const label = topicById(best.topic)?.label || best.topic
+    return {
+      blocked: true, topic: best.topic,
+      text: `That answer lives under **${label}**, which your file isn't cleared for. I've noted the request — your team lead can grant access if it fits your role.`,
+    }
+  }
+  return {
+    blocked: false, topic: best.topic,
+    source: { title: best.title, url: best.url },
+    text: `From **${best.title}** in your Notion:\n\n${excerpt(best.content, qt)}`,
+  }
+}
+
 // Answer, RESPECTING the employee's allowed topics.
 export function answerFor(question, allowedTopics) {
   const hits = KNOWLEDGE.filter((k) => k.q.test(question))

@@ -40,7 +40,7 @@ export default function EmployeeChat() {
     setMessages((m) => [...m, { role: 'user', text: q }]); setInput(''); setTyping(true)
     try {
       const res = await api.ask(emp.code, q)
-      setMessages((m) => [...m, { role: 'ai', text: res.text, blocked: res.blocked, topic: res.topic }])
+      setMessages((m) => [...m, { role: 'ai', text: res.text, blocked: res.blocked, topic: res.topic, source: res.source }])
     } catch (e) {
       setMessages((m) => [...m, { role: 'ai', text: 'Sorry — I lost the connection to your company records. Try again in a moment.', blocked: false }])
     } finally { setTyping(false) }
@@ -140,8 +140,13 @@ function Message({ m }) {
       <div className={`max-w-lg rounded-lg rounded-tl-sm border-[1.5px] border-ink px-4 py-3 text-[14px] leading-relaxed shadow-hard ${m.blocked ? 'bg-stamp/8' : 'bg-paper'}`}>
         <Rich text={m.text} />
         {m.topic && !m.blocked && (
-          <div className="mt-2.5 flex items-center gap-1.5 border-t border-ink/15 pt-2 font-mono text-[10px] uppercase tracking-wider text-ink-soft">
-            <Icon.folder size={12} /> {topicById(m.topic)?.label} · cleared
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-ink/15 pt-2 font-mono text-[10px] uppercase tracking-wider text-ink-soft">
+            <span className="flex items-center gap-1.5"><Icon.folder size={12} /> {topicById(m.topic)?.label} · cleared</span>
+            {m.source && (
+              m.source.url
+                ? <a href={m.source.url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-stamp hover:text-stamp-deep"><Icon.file size={11} /> {m.source.title}</a>
+                : <span className="flex items-center gap-1"><Icon.file size={11} /> {m.source.title}</span>
+            )}
           </div>
         )}
         {m.blocked && (

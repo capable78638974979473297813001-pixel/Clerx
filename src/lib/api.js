@@ -41,6 +41,7 @@ export const api = {
   removeEmployee: (id) => request('DELETE', `/employees/${id}`),
 
   connectSource: (kind) => request('POST', '/sources', { kind }),
+  connectNotion: (token) => request('POST', '/sources', { kind: 'notion', token }),
   resyncSource: (kind) => request('POST', `/sources/${kind}/resync`),
 
   // employee (public, code-gated)

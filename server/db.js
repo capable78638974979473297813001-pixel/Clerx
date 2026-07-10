@@ -70,9 +70,23 @@ CREATE TABLE IF NOT EXISTS sources (
   kind       TEXT NOT NULL,
   name       TEXT NOT NULL,
   docs       INTEGER DEFAULT 0,
-  last_sync  INTEGER
+  last_sync  INTEGER,
+  config     TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_src_company ON sources(company_id);
+
+CREATE TABLE IF NOT EXISTS documents (
+  id          TEXT PRIMARY KEY,
+  company_id  TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  source_kind TEXT NOT NULL,
+  external_id TEXT,
+  title       TEXT,
+  url         TEXT,
+  content     TEXT,
+  topic       TEXT,
+  updated_at  INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_doc_company ON documents(company_id);
 
 CREATE TABLE IF NOT EXISTS activity (
   id         TEXT PRIMARY KEY,
@@ -86,6 +100,9 @@ CREATE TABLE IF NOT EXISTS activity (
 );
 CREATE INDEX IF NOT EXISTS idx_act_company ON activity(company_id, ts);
 `)
+
+// Migrate older DBs that predate the sources.config column (fresh DBs already have it).
+try { db.exec('ALTER TABLE sources ADD COLUMN config TEXT') } catch { /* already present */ }
 
 // convenience wrappers
 export const one = (sql, ...args) => db.prepare(sql).get(...args)
@@ -104,6 +121,19 @@ export const companyOut = (r) => r && ({
   blurb: r.blurb, plan: r.plan,
 })
 export const sourceOut = (r) => r && ({ id: r.kind, name: r.name, docs: r.docs, lastSync: r.last_sync })
+// Like sourceOut, but for real sources (Notion) also attaches live document titles.
+export const sourceOutFull = (r) => {
+  const s = sourceOut(r)
+  if (!s) return s
+  if (r.kind === 'notion') {
+    s.real = true
+    s.files = all(
+      'SELECT title FROM documents WHERE company_id=? AND source_kind=? ORDER BY updated_at DESC LIMIT 6',
+      r.company_id, 'notion',
+    ).map((d) => d.title)
+  }
+  return s
+}
 export const activityOut = (r) => r && ({
   id: r.id, empId: r.emp_id, empName: r.emp_name, question: r.question,
   topic: r.topic, blocked: !!r.blocked, ts: r.ts,

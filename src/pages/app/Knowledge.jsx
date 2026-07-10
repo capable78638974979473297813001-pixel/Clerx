@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom'
 import { PageHead } from '../../components/AppShell'
 import { Button, Stamp, Card, Icon } from '../../components/ui'
 import { useToast, Bar } from '../../components/kit'
+import { NotionConnectModal } from '../../components/NotionConnect'
 import { TOPICS, timeAgo } from '../../lib/store'
 import { api } from '../../lib/api'
 
@@ -23,11 +24,13 @@ export default function Knowledge() {
   const { state, reload } = useOutletContext()
   const toast = useToast()
   const [busy, setBusy] = useState(null)
+  const [notionOpen, setNotionOpen] = useState(false)
   const sources = state.sources
   const totalDocs = sources.reduce((a, s) => a + s.docs, 0)
 
   const connect = async (src) => {
     if (sources.find((s) => s.id === src.id) || busy) return
+    if (src.id === 'notion') { setNotionOpen(true); return } // real connect via token modal
     setBusy(src.id)
     // brief delay so the "indexing" feels real
     await new Promise((r) => setTimeout(r, 1100))
@@ -57,10 +60,10 @@ export default function Knowledge() {
                   <div className="font-semibold">{s.name}</div>
                   <div className="font-mono text-[10px] uppercase tracking-wider text-ink-soft">{s.docs} items · synced {timeAgo(s.lastSync)}</div>
                 </div>
-                <Stamp tone="ledger" rotate={-3} className="!text-[0.56rem]"><Icon.dot size={9} /> Live</Stamp>
+                <Stamp tone="ledger" rotate={-3} className="!text-[0.56rem]"><Icon.dot size={9} /> {s.real ? 'Real' : 'Live'}</Stamp>
               </div>
               <div className="mt-3 space-y-1 border-t-[1.5px] border-ink/12 pt-3">
-                {(meta.files || []).slice(0, 3).map((f) => (
+                {((s.files && s.files.length ? s.files : meta.files) || []).slice(0, 3).map((f) => (
                   <div key={f} className="flex items-center gap-2 text-[12px] text-ink-soft"><Icon.file size={13} className="text-ink-faint" /> <span className="truncate">{f}</span></div>
                 ))}
               </div>
@@ -112,6 +115,8 @@ export default function Knowledge() {
           })}
         </div>
       </Card>
+
+      <NotionConnectModal open={notionOpen} onClose={() => setNotionOpen(false)} onConnected={() => reload()} />
     </div>
   )
 }
