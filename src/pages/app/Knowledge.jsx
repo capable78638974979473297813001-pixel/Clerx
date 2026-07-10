@@ -1,0 +1,113 @@
+import { useState } from 'react'
+import { useOutletContext } from 'react-router-dom'
+import { PageHead } from '../../components/AppShell'
+import { Button, Stamp, Card, Icon } from '../../components/ui'
+import { useToast, Bar } from '../../components/kit'
+import { load, save, TOPICS, timeAgo } from '../../lib/store'
+
+const SOURCE_META = {
+  drive: { icon: Icon.drive, files: ['Employee Handbook 2026.gdoc', 'Q3 Budget.gsheet', 'Site Safety Plan.gdoc', 'Supplier Contracts.gsheet'] },
+  slack: { icon: Icon.slack, files: ['#field-ops archive', '#finance-questions', '#general announcements'] },
+  notion: { icon: Icon.notion, files: ['Company Wiki', 'Onboarding Guide', 'Pricing Playbook'] },
+  upload: { icon: Icon.file, files: ['insurance-policy.pdf', 'PPE-checklist.pdf', 'client-MSA-template.docx'] },
+}
+const ALL = [
+  { id: 'drive', name: 'Google Drive', desc: 'Docs, sheets, slides' },
+  { id: 'slack', name: 'Slack', desc: 'Channels & threads' },
+  { id: 'notion', name: 'Notion', desc: 'Wikis & pages' },
+  { id: 'upload', name: 'Uploaded files', desc: 'PDF, DOCX, CSV' },
+]
+
+export default function Knowledge() {
+  const { state } = useOutletContext()
+  const toast = useToast()
+  const [busy, setBusy] = useState(null)
+  const sources = state.sources
+  const totalDocs = sources.reduce((a, s) => a + s.docs, 0)
+
+  const connect = (src) => {
+    if (sources.find((s) => s.id === src.id)) return
+    setBusy(src.id)
+    setTimeout(() => {
+      const s = load()
+      s.sources.push({ id: src.id, name: src.name, docs: 20 + Math.floor(Math.random() * 120), lastSync: Date.now() })
+      save(s); setBusy(null); toast(`${src.name} connected`)
+    }, 1300)
+  }
+  const resync = (id) => { const s = load(); const src = s.sources.find((x) => x.id === id); src.lastSync = Date.now(); save(s); toast('Re-synced') }
+
+  return (
+    <div>
+      <PageHead no="02" kicker="The archive" title="Knowledge" sub={`${totalDocs.toLocaleString()} items filed across ${sources.length} sources`} />
+
+      {/* connected sources */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        {sources.map((s) => {
+          const meta = SOURCE_META[s.id] || {}
+          const Ic = meta.icon || Icon.folder
+          return (
+            <Card key={s.id} className="p-4 shadow-hard">
+              <div className="flex items-center gap-3">
+                <span className="grid h-11 w-11 place-items-center rounded-lg border-[1.5px] border-ink bg-paper-2"><Ic size={20} /></span>
+                <div className="flex-1">
+                  <div className="font-semibold">{s.name}</div>
+                  <div className="font-mono text-[10px] uppercase tracking-wider text-ink-soft">{s.docs} items · synced {timeAgo(s.lastSync)}</div>
+                </div>
+                <Stamp tone="ledger" rotate={-3} className="!text-[0.56rem]"><Icon.dot size={9} /> Live</Stamp>
+              </div>
+              <div className="mt-3 space-y-1 border-t-[1.5px] border-ink/12 pt-3">
+                {(meta.files || []).slice(0, 3).map((f) => (
+                  <div key={f} className="flex items-center gap-2 text-[12px] text-ink-soft"><Icon.file size={13} className="text-ink-faint" /> <span className="truncate">{f}</span></div>
+                ))}
+              </div>
+              <button onClick={() => resync(s.id)} className="mt-3 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-ink-soft hover:text-ink"><Icon.arrowUR size={13} /> Re-sync now</button>
+            </Card>
+          )
+        })}
+      </div>
+
+      {/* available to connect */}
+      {ALL.some((a) => !sources.find((s) => s.id === a.id)) && (
+        <>
+          <h2 className="mb-3 mt-8 font-mono text-[12px] uppercase tracking-widest text-ink-soft">Connect another source</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {ALL.filter((a) => !sources.find((s) => s.id === a.id)).map((src) => {
+              const Ic = SOURCE_META[src.id].icon
+              return (
+                <button key={src.id} onClick={() => connect(src)} disabled={busy === src.id}
+                  className="flex items-center gap-3 rounded-xl border-[1.5px] border-dashed border-ink/40 bg-paper p-4 text-left transition hover:border-solid hover:shadow-hard">
+                  <span className="grid h-11 w-11 place-items-center rounded-lg border-[1.5px] border-ink bg-paper-2"><Ic size={20} /></span>
+                  <div className="flex-1">
+                    <div className="font-semibold">{src.name}</div>
+                    <div className="font-mono text-[10px] uppercase tracking-wider text-ink-soft">{src.desc}</div>
+                  </div>
+                  {busy === src.id ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-ink border-t-transparent" /> : <Icon.plus size={18} className="text-ink-faint" />}
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
+
+      {/* how it's filed */}
+      <h2 className="mb-3 mt-8 font-mono text-[12px] uppercase tracking-widest text-ink-soft">How it's filed</h2>
+      <Card className="p-5 shadow-hard">
+        <p className="mb-4 text-[13px] text-ink-soft">Every item is auto-sorted into a topic. Clearances are granted per topic, so this is what gates each answer.</p>
+        <div className="space-y-3">
+          {TOPICS.map((t, i) => {
+            const share = [26, 22, 16, 14, 12, 10][i]
+            return (
+              <div key={t.id}>
+                <div className="mb-1 flex items-center justify-between text-[12px]">
+                  <span className="flex items-center gap-1.5 font-medium"><span className="h-2.5 w-2.5 rounded-full" style={{ background: t.color }} /> {t.label}</span>
+                  <span className="font-mono text-ink-soft">{Math.round(totalDocs * share / 100)} items</span>
+                </div>
+                <Bar value={share * 3} color={t.color} />
+              </div>
+            )
+          })}
+        </div>
+      </Card>
+    </div>
+  )
+}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Logo, Stamp, Button, Icon, StampMark } from '../components/ui'
-import { load, answerFor, topicById } from '../lib/store'
+import { load, answerFor, topicById, logActivity } from '../lib/store'
 
 const SUGGESTIONS = [
   'How much can I spend on materials?',
@@ -40,6 +40,7 @@ export default function EmployeeChat() {
     setTimeout(() => {
       const res = answerFor(q, allowed); setTyping(false)
       setMessages((m) => [...m, { role: 'ai', text: res.text, blocked: res.blocked, topic: res.topic }])
+      if (res.topic) logActivity({ empId: emp.id, empName: emp.name, question: q, topic: res.topic, blocked: res.blocked })
     }, 900 + Math.random() * 700)
   }
 

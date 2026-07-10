@@ -331,7 +331,7 @@ function CodesStep({ state, nav, back }) {
         <Button variant="ghost" onClick={back}>Back</Button>
         <div className="flex gap-3">
           <Button variant="outline" onClick={() => nav('/join')}>Try employee view</Button>
-          <Button onClick={() => nav('/dashboard')}>Go to the desk <Icon.arrow size={16} /></Button>
+          <Button onClick={() => nav('/app')}>Go to the desk <Icon.arrow size={16} /></Button>
         </div>
       </div>
     </StepCard>

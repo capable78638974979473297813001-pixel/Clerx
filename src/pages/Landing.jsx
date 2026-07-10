@@ -1,9 +1,16 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Logo, Button, Stamp, Card, Eyebrow, Icon } from '../components/ui'
 import { StampMark } from '../components/ui'
+import { seedDemo } from '../lib/store'
+
+function useLiveDemo() {
+  const nav = useNavigate()
+  return () => { seedDemo(); nav('/app') }
+}
 
 /* ============================ NAV ============================ */
 function Nav() {
+  const demo = useLiveDemo()
   return (
     <header className="sticky top-0 z-50 border-b-[1.5px] border-ink bg-paper/90 backdrop-blur-sm">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3">
@@ -12,6 +19,7 @@ function Nav() {
           <a href="#how" className="ink-link hover:text-ink">How it works</a>
           <a href="#why" className="ink-link hover:text-ink">Why Clerx</a>
           <a href="#rates" className="ink-link hover:text-ink">Rates</a>
+          <button onClick={demo} className="ink-link hover:text-ink">Live demo</button>
         </nav>
         <div className="flex items-center gap-2">
           <Button as={Link} to="/join" variant="ghost" size="sm">Employee entry</Button>
@@ -24,6 +32,7 @@ function Nav() {
 
 /* ============================ HERO ============================ */
 function Hero() {
+  const demo = useLiveDemo()
   return (
     <section className="relative overflow-hidden border-b-[1.5px] border-ink">
       <div className="pointer-events-none absolute inset-0 dotgrid opacity-60" />
@@ -41,7 +50,7 @@ function Hero() {
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Button as={Link} to="/setup" size="lg">Open your company file <Icon.arrow size={18} /></Button>
-            <Button as={Link} to="/join" variant="outline" size="lg">I have a code</Button>
+            <Button onClick={demo} variant="outline" size="lg">Explore a live demo</Button>
           </div>
           <div className="mt-6 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-ink-faint">
             <Icon.check size={14} className="text-ledger" /> Free to file · No card · Teams of 5–200
