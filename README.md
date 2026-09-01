@@ -36,8 +36,9 @@ GET  /api/topics        POST /api/join   POST /api/ask     (public, code-gated)
 ## What's real vs. mocked
 
 - **Real:** accounts, sessions, password hashing, a SQLite database, per-company data isolation, server-enforced topic permissions, and three real knowledge sources — **Notion**, **Slack**, and **file upload**. Each pulls actual content (Notion pages / Slack channel history / uploaded text files), indexes it, classifies each item into a topic, and answers employee questions from that real content (topic-gated, with the source cited). Provider tokens are AES-256-GCM encrypted at rest and never returned to the client.
-- **Mocked (for now):** company verification (simulated web check), the Google Drive integration (simulated connect + indexing), and the answer engine's retrieval, which is keyword-based rather than semantic/LLM.
-- **Next:** an LLM for better answers over the indexed content; Google Drive via the same document pipeline; PDF/DOCX parsing for uploads; a real search API for verification.
+- **Real:** the answer engine is a graceful fallback chain — with an Anthropic key it reads each employee's *cleared* documents and writes the answer semantically, in the company's voice, citing the source; with no key it degrades to the built-in keyword engine, so the app always works and the free tier stays free. The LLM only ever sees topic-permitted docs, so permissions stay server-enforced and fail-closed. Set `CLERX_ANTHROPIC_API_KEY` (or `ANTHROPIC_API_KEY`) to enable it; `CLERX_LLM_MODEL` overrides the model.
+- **Mocked (for now):** company verification (simulated web check) and the Google Drive integration (simulated connect + indexing).
+- **Next:** Google Drive via the same document pipeline; PDF/DOCX parsing for uploads; a real search API for verification.
 
 Real sources share one pipeline: a provider module (`server/notion.js`, `server/slack.js`) exposes `ingest(token) → { workspace, docs }`; the route encrypts the token, stores the docs, and classifies each into a topic. Adding a provider is one module + one entry in the `PROVIDERS` map.
 

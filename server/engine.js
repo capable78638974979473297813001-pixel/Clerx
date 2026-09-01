@@ -51,6 +51,41 @@ function excerpt(content, qt, len = 340) {
   return s
 }
 
+// Keyword-overlap score of a single document against the query terms.
+function scoreDoc(qt, d) {
+  const title = String(d.title || '').toLowerCase()
+  const hay = title + ' ' + String(d.content || '').toLowerCase()
+  let score = 0
+  for (const t of qt) {
+    if (title.includes(t)) score += 3
+    score += hay.split(t).length - 1
+  }
+  return score
+}
+
+// Pick the allowed documents to hand the LLM as answer context. Returns ONLY
+// docs the employee is cleared for (topic-gated at the source — the LLM can
+// never see content outside their permissions). Small corpora go in whole; a
+// large corpus is trimmed to a char budget, keyword-ranked so the most
+// relevant docs survive the cut.
+export function contextForLLM(question, allowedTopics, docs, budget = 60000) {
+  const allowed = (docs || []).filter((d) => d.topic && allowedTopics.includes(d.topic))
+  if (!allowed.length) return []
+  const total = allowed.reduce((n, d) => n + String(d.content || '').length, 0)
+  if (total <= budget) return allowed
+  const qt = terms(question)
+  const ranked = allowed.map((d) => ({ d, s: scoreDoc(qt, d) })).sort((a, b) => b.s - a.s)
+  const out = []
+  let used = 0
+  for (const { d } of ranked) {
+    const len = String(d.content || '').length
+    if (out.length && used + len > budget) break
+    out.push(d)
+    used += len
+  }
+  return out
+}
+
 // Search the company's REAL documents (topic-gated). Returns an answer, a
 // blocked notice, or null when nothing relevant is on file (caller falls back).
 export function answerFromDocs(question, allowedTopics, docs) {
@@ -59,13 +94,7 @@ export function answerFromDocs(question, allowedTopics, docs) {
   let best = null, bestScore = 0
   for (const d of docs) {
     if (!d.topic) continue // unclassified → not surfaced (fail closed)
-    const title = String(d.title || '').toLowerCase()
-    const hay = (title + ' ' + String(d.content || '').toLowerCase())
-    let score = 0
-    for (const t of qt) {
-      if (title.includes(t)) score += 3
-      score += hay.split(t).length - 1
-    }
+    const score = scoreDoc(qt, d)
     if (score > bestScore) { bestScore = score; best = d }
   }
   if (!best || bestScore < 2) return null

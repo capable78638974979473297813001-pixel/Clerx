@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { one, all, run, uuid, empOut, companyOut } from '../db.js'
-import { TOPICS, answerFor, answerFromDocs } from '../engine.js'
+import { TOPICS, answerFor, answerFromDocs, contextForLLM } from '../engine.js'
+import { answerWithLLM } from '../llm.js'
 
 const router = Router()
 
@@ -19,7 +20,7 @@ router.post('/join', (req, res) => {
 })
 
 // POST /api/ask  { code, question } → scoped answer, logged to activity
-router.post('/ask', (req, res) => {
+router.post('/ask', async (req, res) => {
   const code = (req.body.code || '').trim().toUpperCase()
   const question = (req.body.question || '').trim()
   if (!code || !question) return res.status(400).json({ error: 'Missing code or question.' })
@@ -27,10 +28,21 @@ router.post('/ask', (req, res) => {
   if (!emp) return res.status(404).json({ error: 'Unknown employee code.' })
 
   const allowed = JSON.parse(emp.topics || '[]')
-  // Prefer the company's REAL indexed documents (e.g. Notion); fall back to the
-  // built-in knowledge base when nothing relevant is on file.
+  const company = companyOut(one('SELECT * FROM companies WHERE id=?', emp.company_id))
+  // Prefer the company's REAL indexed documents (e.g. Notion). The answer engine
+  // is a fallback chain, each step degrading gracefully to the next:
+  //   1. LLM synthesis over the employee's ALLOWED docs — semantic + in the
+  //      company's voice. Returns null with no key, on a miss, or on API error.
+  //   2. Keyword search over all docs — surfaces a hit, or a "not cleared for
+  //      that topic" notice when the best match sits outside their permissions.
+  //   3. The built-in starter knowledge base.
+  // contextForLLM is topic-gated, so the model never sees content the employee
+  // isn't cleared for — permissions stay server-enforced and fail-closed.
   const docs = all('SELECT title, url, content, topic, source_kind FROM documents WHERE company_id=?', emp.company_id)
-  const result = answerFromDocs(question, allowed, docs) || answerFor(question, allowed)
+  const result =
+    (await answerWithLLM(question, contextForLLM(question, allowed, docs), company)) ||
+    answerFromDocs(question, allowed, docs) ||
+    answerFor(question, allowed)
 
   run('UPDATE employees SET questions = questions + 1, last_active=? WHERE id=?', Date.now(), emp.id)
   if (result.topic) {
